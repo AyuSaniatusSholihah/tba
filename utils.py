@@ -1,81 +1,98 @@
 """
 utils.py
 ========
-Fungsi visualisasi Graphviz untuk DFA dan NFA.
-Mendukung animasi CSS pada state aktif via SVG injection.
+Fungsi visualisasi: membangun Graphviz graph dan meng-inject animasi ke SVG.
+Tidak mengandung CSS langsung — semua desain diimpor dari styles.py.
 """
 
 import re
 import graphviz
 from engine import EPSILON
+from styles import (
+    ANIM_CSS, SVG_WRAPPER,
+    COLOR_BASE, COLOR_SURFACE0,
+    COLOR_GREEN, COLOR_RED, COLOR_YELLOW, COLOR_BLUE,
+    COLOR_SURFACE1, COLOR_TEXT,
+)
 
 
-# ── Graphviz graph builder (untuk st.graphviz_chart / static) ────────────
+# =====================================================================
+# =================== Helper warna node/edge ==========================
+# =====================================================================
+
+def _node_colors(is_active, accepted):
+    """Return (color, fillcolor, fontcolor, penwidth) untuk sebuah state node."""
+    if is_active:
+        if accepted is True:
+            return COLOR_GREEN, COLOR_GREEN, COLOR_BASE, "3"
+        elif accepted is False:
+            return COLOR_RED, COLOR_RED, COLOR_BASE, "3"
+        else:
+            return COLOR_YELLOW, COLOR_YELLOW, COLOR_BASE, "3"
+    return COLOR_BLUE, COLOR_SURFACE1, COLOR_TEXT, "1.5"
+
+
+def _edge_color(is_active):
+    return (COLOR_YELLOW, "2.5") if is_active else ("#6c7086", "1.2")
+
+
+_GRAPH_ATTRS = {"rankdir": "LR", "bgcolor": COLOR_BASE, "fontname": "Helvetica"}
+
+
+# =====================================================================
+# =================== Graphviz graph builders =========================
+# =====================================================================
 
 def build_dfa_graph(dfa, highlight_state=None, highlight_edge=None, accepted=None):
-    dot = graphviz.Digraph(graph_attr={'rankdir': 'LR', 'bgcolor': '#1e1e2e', 'fontname': 'Helvetica'})
-    dot.node('__start__', shape='point', style='invis')
-    dot.edge('__start__', str(dfa.start), color='#cdd6f4', arrowhead='vee')
+    """Bangun Graphviz Digraph untuk DFA, dengan optional highlight state/edge."""
+    dot = graphviz.Digraph(graph_attr=_GRAPH_ATTRS)
+    dot.node("__start__", shape="point", style="invis")
+    dot.edge("__start__", str(dfa.start), color=COLOR_TEXT, arrowhead="vee")
 
     for state in dfa.states:
-        is_final = state in dfa.accepts
         is_active = str(state) == str(highlight_state)
-
-        if is_active:
-            if accepted is True:
-                color, fillcolor, fontcolor = '#a6e3a1', '#a6e3a1', '#1e1e2e'
-            elif accepted is False:
-                color, fillcolor, fontcolor = '#f38ba8', '#f38ba8', '#1e1e2e'
-            else:
-                color, fillcolor, fontcolor = '#f9e2af', '#f9e2af', '#1e1e2e'
-            penwidth = '3'
-        else:
-            color, fillcolor, fontcolor = '#89b4fa', '#313244', '#cdd6f4'
-            penwidth = '1.5'
-
-        dot.node(str(state), shape='doublecircle' if is_final else 'circle',
-                 style='filled', fillcolor=fillcolor, color=color,
-                 fontcolor=fontcolor, fontname='Helvetica', penwidth=penwidth)
+        color, fillcolor, fontcolor, penwidth = _node_colors(is_active, accepted if is_active else None)
+        dot.node(
+            str(state),
+            shape="doublecircle" if state in dfa.accepts else "circle",
+            style="filled", fillcolor=fillcolor, color=color,
+            fontcolor=fontcolor, fontname="Helvetica", penwidth=penwidth,
+        )
 
     for (from_s, sym), to_s in dfa.transitions.items():
-        is_active_edge = (highlight_edge and str(from_s) == str(highlight_edge[0]) and sym == highlight_edge[1])
-        dot.edge(str(from_s), str(to_s), label=f' {sym} ',
-                 color='#f9e2af' if is_active_edge else '#6c7086',
-                 fontcolor='#cdd6f4', fontname='Helvetica',
-                 penwidth='2.5' if is_active_edge else '1.2')
+        is_active_edge = (
+            highlight_edge is not None
+            and str(from_s) == str(highlight_edge[0])
+            and sym == highlight_edge[1]
+        )
+        ec, ep = _edge_color(is_active_edge)
+        dot.edge(str(from_s), str(to_s), label=f" {sym} ",
+                 color=ec, fontcolor=COLOR_TEXT, fontname="Helvetica", penwidth=ep)
     return dot
 
 
 def build_nfa_graph(nfa, highlight_states=None, highlight_edges=None, accepted=None):
-    dot = graphviz.Digraph(graph_attr={'rankdir': 'LR', 'bgcolor': '#1e1e2e', 'fontname': 'Helvetica'})
-    dot.node('__start__', shape='point', style='invis')
-    dot.edge('__start__', str(nfa.start), color='#cdd6f4', arrowhead='vee')
+    """Bangun Graphviz Digraph untuk NFA, dengan optional highlight state/edge."""
+    dot = graphviz.Digraph(graph_attr=_GRAPH_ATTRS)
+    dot.node("__start__", shape="point", style="invis")
+    dot.edge("__start__", str(nfa.start), color=COLOR_TEXT, arrowhead="vee")
 
     active_set = {str(s) for s in highlight_states} if highlight_states else set()
 
     for state in nfa.states:
-        is_final = state in nfa.accepts
         is_active = str(state) in active_set
+        color, fillcolor, fontcolor, penwidth = _node_colors(is_active, accepted if is_active else None)
+        dot.node(
+            str(state),
+            shape="doublecircle" if state in nfa.accepts else "circle",
+            style="filled", fillcolor=fillcolor, color=color,
+            fontcolor=fontcolor, fontname="Helvetica", penwidth=penwidth,
+        )
 
-        if is_active:
-            if accepted is True:
-                color, fillcolor, fontcolor = '#a6e3a1', '#a6e3a1', '#1e1e2e'
-            elif accepted is False:
-                color, fillcolor, fontcolor = '#f38ba8', '#f38ba8', '#1e1e2e'
-            else:
-                color, fillcolor, fontcolor = '#f9e2af', '#f9e2af', '#1e1e2e'
-            penwidth = '3'
-        else:
-            color, fillcolor, fontcolor = '#89b4fa', '#313244', '#cdd6f4'
-            penwidth = '1.5'
-
-        dot.node(str(state), shape='doublecircle' if is_final else 'circle',
-                 style='filled', fillcolor=fillcolor, color=color,
-                 fontcolor=fontcolor, fontname='Helvetica', penwidth=penwidth)
-
+    # Gabungkan label edge dengan tujuan yang sama
     edge_map = {}
     for (from_s, sym), targets in nfa.transitions.items():
-        label = 'ε' if sym == EPSILON else sym
+        label = "ε" if sym == EPSILON else sym
         for to_s in targets:
             edge_map.setdefault((str(from_s), str(to_s)), []).append(label)
 
@@ -86,145 +103,74 @@ def build_nfa_graph(nfa, highlight_states=None, highlight_edges=None, accepted=N
                 active_edges.add((str(fs), str(to_s)))
 
     for (from_s, to_s), labels in edge_map.items():
-        is_active_edge = (from_s, to_s) in active_edges
-        dot.edge(from_s, to_s, label=f' {",".join(sorted(labels))} ',
-                 color='#f9e2af' if is_active_edge else '#6c7086',
-                 fontcolor='#cdd6f4', fontname='Helvetica',
-                 penwidth='2.5' if is_active_edge else '1.2')
+        ec, ep = _edge_color((from_s, to_s) in active_edges)
+        dot.edge(from_s, to_s, label=f" {','.join(sorted(labels))} ",
+                 color=ec, fontcolor=COLOR_TEXT, fontname="Helvetica", penwidth=ep)
     return dot
 
 
-# ── CSS Animation Injection ──────────────────────────────────────────────
-
-_ANIM_CSS = """
-<style>
-@keyframes glow-active {
-    0%   { stroke: #f9e2af; stroke-width: 3; filter: drop-shadow(0 0 4px #f9e2af) drop-shadow(0 0 10px #f9e2af80); }
-    50%  { stroke: #fab387; stroke-width: 4.5; filter: drop-shadow(0 0 10px #fab387) drop-shadow(0 0 22px #fab38780); }
-    100% { stroke: #f9e2af; stroke-width: 3; filter: drop-shadow(0 0 4px #f9e2af) drop-shadow(0 0 10px #f9e2af80); }
-}
-@keyframes glow-accept {
-    0%   { stroke: #a6e3a1; stroke-width: 3; filter: drop-shadow(0 0 4px #a6e3a1) drop-shadow(0 0 12px #a6e3a180); }
-    50%  { stroke: #a6e3a1; stroke-width: 5; filter: drop-shadow(0 0 14px #a6e3a1) drop-shadow(0 0 28px #a6e3a1b0); }
-    100% { stroke: #a6e3a1; stroke-width: 3; filter: drop-shadow(0 0 4px #a6e3a1) drop-shadow(0 0 12px #a6e3a180); }
-}
-@keyframes glow-reject {
-    0%   { stroke: #f38ba8; stroke-width: 3; filter: drop-shadow(0 0 4px #f38ba8) drop-shadow(0 0 10px #f38ba880); }
-    33%  { stroke: #f38ba8; stroke-width: 5; filter: drop-shadow(0 0 14px #f38ba8) drop-shadow(0 0 28px #f38ba8b0); }
-    66%  { stroke: #f38ba8; stroke-width: 3; filter: drop-shadow(0 0 4px #f38ba8) drop-shadow(0 0 10px #f38ba880); }
-    100% { stroke: #f38ba8; stroke-width: 5; filter: drop-shadow(0 0 14px #f38ba8) drop-shadow(0 0 28px #f38ba8b0); }
-}
-@keyframes scale-breathe {
-    0%   { transform: scale(1);    }
-    50%  { transform: scale(1.09); }
-    100% { transform: scale(1);    }
-}
-.state-active ellipse, .state-active polygon {
-    animation: glow-active 1s ease-in-out infinite;
-    transform-origin: center;
-    transform-box: fill-box;
-}
-.state-active text {
-    animation: scale-breathe 1s ease-in-out infinite;
-    transform-origin: center;
-    transform-box: fill-box;
-}
-.state-accepted ellipse, .state-accepted polygon {
-    animation: glow-accept 0.8s ease-in-out infinite;
-    transform-origin: center;
-    transform-box: fill-box;
-}
-.state-rejected ellipse, .state-rejected polygon {
-    animation: glow-reject 0.5s ease-in-out 4;
-    transform-origin: center;
-    transform-box: fill-box;
-}
-svg { width: 100% !important; height: auto !important; }
-</style>
-"""
-
+# =====================================================================
+# =================== SVG + Animasi CSS ================================
+# =====================================================================
 
 def _inject_animations(svg_str, highlight_states, accepted):
     """
-    Parse SVG dari graphviz, tambahkan CSS animation class ke node yang aktif.
-    Graphviz SVG: tiap node adalah <g id="nodeN" class="node"><title>STATE_NAME</title>...
+    Suntikkan CSS animation class ke dalam SVG dari graphviz.
+    Graphviz SVG: tiap node = <g id="nodeN" class="node"><title>NAMA_STATE</title>...
     """
     if not highlight_states:
-        svg_with_css = re.sub(r'(<svg[^>]*>)', r'\1' + _ANIM_CSS, svg_str, count=1)
-        return svg_with_css
+        return re.sub(r"(<svg[^>]*>)", r"\1" + ANIM_CSS, svg_str, count=1)
 
     active_names = {str(s) for s in highlight_states}
+    anim_class = (
+        "state-accepted" if accepted is True
+        else "state-rejected" if accepted is False
+        else "state-active"
+    )
 
-    if accepted is True:
-        anim_class = 'state-accepted'
-    elif accepted is False:
-        anim_class = 'state-rejected'
-    else:
-        anim_class = 'state-active'
-
-    def patch_node(m):
-        group = m.group(0)
-        title_m = re.search(r'<title>(.*?)</title>', group, re.DOTALL)
+    def patch_node(match):
+        group = match.group(0)
+        title_m = re.search(r"<title>(.*?)</title>", group, re.DOTALL)
         if title_m:
-            raw_title = title_m.group(1)
-            # unescape HTML entities
-            title = (raw_title
-                     .replace('&amp;', '&').replace('&lt;', '<')
-                     .replace('&gt;', '>').replace('&#45;', '-')
-                     .replace('&quot;', '"'))
+            title = (title_m.group(1)
+                     .replace("&amp;", "&").replace("&lt;", "<")
+                     .replace("&gt;", ">").replace("&#45;", "-").replace("&quot;", '"'))
             if title in active_names:
                 group = re.sub(r'class="node"', f'class="node {anim_class}"', group, count=1)
         return group
 
-    # Match each node group (non-greedy, DOTALL)
-    svg_str_patched = re.sub(
+    svg_patched = re.sub(
         r'<g id="node\d+"[^>]*class="node"[^>]*>.*?</g>',
-        patch_node,
-        svg_str,
-        flags=re.DOTALL
+        patch_node, svg_str, flags=re.DOTALL
     )
-
-    # Inject CSS after opening <svg ...> tag
-    svg_with_css = re.sub(r'(<svg[^>]*>)', r'\1' + _ANIM_CSS, svg_str_patched, count=1)
-    return svg_with_css
+    return re.sub(r"(<svg[^>]*>)", r"\1" + ANIM_CSS, svg_patched, count=1)
 
 
-def render_dfa_animated(dfa, highlight_state=None, highlight_edge=None, accepted=None, height=380):
+# =====================================================================
+# =================== Public render functions =========================
+# =====================================================================
+
+def render_dfa_animated(dfa, highlight_state=None, highlight_edge=None,
+                        accepted=None, height=380):
     """
-    Render DFA sebagai HTML dengan animasi CSS glow pada state aktif.
-    Return: HTML string (gunakan dengan st.components.v1.html())
+    Render DFA → HTML string dengan animasi SVG pada state aktif.
+    Gunakan: st.components.v1.html(render_dfa_animated(...), height=...)
     """
     dot = build_dfa_graph(dfa, highlight_state=highlight_state,
                           highlight_edge=highlight_edge, accepted=accepted)
-    svg_bytes = dot.pipe(format='svg')
-    svg_str = svg_bytes.decode('utf-8')
+    svg = dot.pipe(format="svg").decode("utf-8")
+    animated = _inject_animations(svg, {str(highlight_state)} if highlight_state else set(), accepted)
+    return SVG_WRAPPER.format(bg=COLOR_BASE, border=COLOR_SURFACE0, height=height, svg=animated)
 
-    highlight_states = {str(highlight_state)} if highlight_state is not None else set()
-    animated_svg = _inject_animations(svg_str, highlight_states, accepted)
 
-    return f"""
-    <div style="background:#1e1e2e; border-radius:12px; padding:10px;
-                border:1px solid #313244; overflow:auto; height:{height}px;">
-        {animated_svg}
-    </div>
+def render_nfa_animated(nfa, highlight_states=None, highlight_edges=None,
+                        accepted=None, height=380):
     """
-
-
-def render_nfa_animated(nfa, highlight_states=None, highlight_edges=None, accepted=None, height=380):
-    """
-    Render NFA sebagai HTML dengan animasi CSS glow pada state aktif.
-    Return: HTML string (gunakan dengan st.components.v1.html())
+    Render NFA → HTML string dengan animasi SVG pada state aktif.
+    Gunakan: st.components.v1.html(render_nfa_animated(...), height=...)
     """
     dot = build_nfa_graph(nfa, highlight_states=highlight_states,
                           highlight_edges=highlight_edges, accepted=accepted)
-    svg_bytes = dot.pipe(format='svg')
-    svg_str = svg_bytes.decode('utf-8')
-
-    animated_svg = _inject_animations(svg_str, highlight_states or set(), accepted)
-
-    return f"""
-    <div style="background:#1e1e2e; border-radius:12px; padding:10px;
-                border:1px solid #313244; overflow:auto; height:{height}px;">
-        {animated_svg}
-    </div>
-    """
+    svg = dot.pipe(format="svg").decode("utf-8")
+    animated = _inject_animations(svg, highlight_states or set(), accepted)
+    return SVG_WRAPPER.format(bg=COLOR_BASE, border=COLOR_SURFACE0, height=height, svg=animated)
