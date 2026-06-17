@@ -6,10 +6,55 @@ Laporan ini menyajikan struktur dokumentasi formal, penjelasan implementasi kode
 ---
 
 ## DAFTAR ISI
-1. [Fitur 1: Uji String pada Deterministic Finite Automata (DFA)](#fitur-1-uji-string-pada-deterministic-finite-automata-dfa)
-2. [Fitur 2: Konversi Regular Expression ke NFA (Konstruksi Thompson) & Uji String](#fitur-2-konversi-regular-expression-ke-nfa-konstruksi-thompson--uji-string)
-3. [Fitur 3: Minimisasi DFA (Partition Refinement)](#fitur-3-minimisasi-dfa-partition-refinement)
-4. [Fitur 4: Cek Ekuivalensi Dua DFA (Product Construction + BFS)](#fitur-4-cek-ekuivalensi-dua-dfa-product-construction--bfs)
+1. [Arsitektur Aplikasi & Pemetaan Berkas](#arsitektur-aplikasi--pemetaan-berkas)
+2. [Fitur 1: Uji String pada Deterministic Finite Automata (DFA)](#fitur-1-uji-string-pada-deterministic-finite-automata-dfa)
+3. [Fitur 2: Konversi Regular Expression ke NFA (Konstruksi Thompson) & Uji String](#fitur-2-konversi-regular-expression-ke-nfa-konstruksi-thompson--uji-string)
+4. [Fitur 3: Minimisasi DFA (Partition Refinement)](#fitur-3-minimisasi-dfa-partition-refinement)
+5. [Fitur 4: Cek Ekuivalensi Dua DFA (Product Construction + BFS)](#fitur-4-cek-ekuivalensi-dua-dfa-product-construction--bfs)
+6. [Helper Sistem & Tema Visual](#helper-sistem--tema-visual)
+
+---
+
+## Arsitektur Aplikasi & Pemetaan Berkas
+
+Aplikasi **Smart Automata Simulator** dibangun dengan arsitektur modular yang memisahkan logika matematika komputasi automata dari logika penyajian antarmuka pengguna (UI). Berikut adalah pemetaan berkas penting dalam proyek ini:
+
+```mermaid
+graph TD
+    main["main.py (Routing & Main UI)"]
+    styles["styles.py (Tema CSS & Animasi)"]
+    utils["utils.py (Visualisasi Graphviz & SVG)"]
+    engine["engine.py (Core Engine Automata)"]
+    
+    f1["dfa_testing.py (UI Uji DFA)"]
+    f2["regex_nfa.py (UI Regex & NFA)"]
+    f3["dfa_minimization.py (UI Minimisasi)"]
+    f4["dfa_equivalence.py (UI Ekuivalensi)"]
+    
+    main --> f1
+    main --> f2
+    main --> f3
+    main --> f4
+    
+    f1 & f2 & f3 & f4 --> engine
+    f1 & f2 & f3 & f4 --> utils
+    utils & main --> styles
+```
+
+### Daftar Berkas Utama & Letak Kodenya:
+1. **[main.py](file:///d:/Nia/Kuliah/SEM4/TBA/main.py)**: Berkas utama (entry point) aplikasi Streamlit. Berfungsi mengatur tata letak halaman, memuat tema CSS, dan mengarahkan rute halaman ke fitur yang dipilih melalui sidebar.
+2. **[engine.py](file:///d:/Nia/Kuliah/SEM4/TBA/engine.py)**: Mengandung kelas komputasi inti:
+   - `DFA`: Eksekusi & pelacakan *string* pada DFA.
+   - `NFA`: Eksekusi parallel-tracking & $\varepsilon$-closure pada NFA.
+   - `RegexParser`: Pembaca ekspresi reguler menjadi Abstract Syntax Tree (AST) dan mengonversinya ke NFA dengan aturan Thompson.
+   - `minimize_dfa`: Algoritma penyederhanaan state DFA (Partition Refinement).
+   - `dfa_equivalent`: Pengujian ekuivalensi fungsional dua DFA dengan BFS.
+3. **[utils.py](file:///d:/Nia/Kuliah/SEM4/TBA/utils.py)**: Berkas helper visualisasi. Mengonversi data struktur automata Python menjadi kode Graphviz DOT, men-generate gambar SVG, dan menyuntikkan class CSS kustom ke tag SVG agar state aktif dapat dianimasikan secara dinamis.
+4. **[styles.py](file:///d:/Nia/Kuliah/SEM4/TBA/styles.py)**: Menyimpan definisi warna palet kustom (dark mode premium) dan aturan-aturan animasi CSS `@keyframes` yang membuat state automata bersinar (*glowing*).
+5. **[dfa_testing.py](file:///d:/Nia/Kuliah/SEM4/TBA/dfa_testing.py)**: Pengendali antarmuka Fitur 1 (Formulir DFA, pemrosesan transisi, dan eksekusi visualisasi berkecepatan dinamis).
+6. **[regex_nfa.py](file:///d:/Nia/Kuliah/SEM4/TBA/regex_nfa.py)**: Pengendali antarmuka Fitur 2 (Form input regex, penampilan transisi NFA, dan penjejakan parallel states).
+7. **[dfa_minimization.py](file:///d:/Nia/Kuliah/SEM4/TBA/dfa_minimization.py)**: Pengendali antarmuka Fitur 3 (Visualisasi perbandingan side-by-side graf DFA asli vs minimal, dan metrik reduksi).
+8. **[dfa_equivalence.py](file:///d:/Nia/Kuliah/SEM4/TBA/dfa_equivalence.py)**: Pengendali antarmuka Fitur 4 (Formulir input dua DFA, status ekuivalensi, dan penelusuran string pembeda).
 
 ---
 
@@ -89,12 +134,51 @@ class DFA:
 1.  **Konstruktor (`__init__`)**: Menyimpan komponen DFA berupa himpunan state (`states`), alfabet (`alphabet`), fungsi transisi (`transitions` dalam bentuk dictionary Python dengan kunci `(state, simbol)`), start state, dan himpunan accepting states.
 2.  **Pencocokan String (`run`)**: Dimulai dari `self.start` sebagai state aktif. Untuk setiap karakter dalam string, dicocokkan dengan dictionary `self.transitions`. Jika transisi valid, state aktif diperbarui dan ditambahkan ke dalam `trace` untuk kebutuhan visualisasi lintasan pada frontend. Jika di akhir pembacaan string, state aktif berada di `accepts`, maka fungsi mengembalikan nilai `True`.
 
+### 1.6 Implementasi Antarmuka (Streamlit UI)
+Seluruh logika UI dan animasi langkah-demi-langkah (step-by-step) untuk pengujian DFA terletak di berkas **[dfa_testing.py](file:///d:/Nia/Kuliah/SEM4/TBA/dfa_testing.py#L26-L136)**:
+- **`parse_transitions_dfa(text)`**: Menguraikan baris teks input transisi pengguna (misal: `q0, 0, q0`) menjadi dictionary Python.
+- **`render()`**: Menggambar tata letak formulir untuk menerima states, alfabet, start state, accepting states, dan transisi DFA.
+- **Animasi Sinkron (`time.sleep`)**: Ketika tombol "Jalankan" diklik, aplikasi melakukan iterasi sepanjang array `trace`. Di setiap langkah, ia memperbarui penyorotan state (`highlight_state`) dan edge (`highlight_edge`) dengan memanggil helper `render_dfa_animated()`. Kontainer kosong (`st.empty()`) diganti secara dinamis untuk memberikan efek pergerakan mulus pada browser.
+
 ---
 
 ## Fitur 2: Konversi Regular Expression ke NFA (Konstruksi Thompson) & Uji String
 
 ### 2.1 Deskripsi & Teori
-Mengubah ekspresi reguler (Regex) menjadi *Nondeterministic Finite Automata with Epsilon Transitions* ($\varepsilon$-NFA) menggunakan **Konstruksi Thompson**. Evaluasi string pada NFA menggunakan metode **$\varepsilon$-closure** untuk melacak pergerakan state secara paralel.
+Fitur ini mengonversi Ekspresi Reguler (Regex) menjadi *Nondeterministic Finite Automata with $\varepsilon$-transitions* ($\varepsilon$-NFA) menggunakan **Konstruksi Thompson**, kemudian mensimulasikan string masukan pada NFA secara paralel menggunakan konsep **$\varepsilon$-closure**.
+
+#### A. Definisi Formal $\varepsilon$-NFA
+Secara formal, $\varepsilon$-NFA didefinisikan sebagai 5-tuple:
+$$M = (Q, \Sigma, \delta, q_0, F)$$
+Di mana:
+*   $Q$ adalah himpunan terhingga dari state.
+*   $\Sigma$ adalah alfabet (simbol masukan).
+*   $\delta$ adalah fungsi transisi yang memetakan state dan simbol masukan (termasuk $\varepsilon$) ke himpunan state tujuan:
+    $$\delta: Q \times (\Sigma \cup \{\varepsilon\}) \rightarrow 2^Q$$
+*   $q_0 \in Q$ adalah start state (state awal).
+*   $F \subseteq Q$ adalah himpunan accepting states (state penerima).
+
+#### B. Operasi $\varepsilon$-closure (Penutupan Epsilon)
+$\varepsilon$-closure dari sebuah state $s$ (atau himpunan state $S$) adalah himpunan seluruh state yang dapat dicapai melalui transisi $\varepsilon$ secara berantai tanpa membaca simbol masukan apapun. Secara induktif didefinisikan sebagai:
+1. **Basis**: 
+   $$s \in \varepsilon\text{-closure}(\{s\})$$
+2. **Langkah Induksi**: Jika $p \in \varepsilon\text{-closure}(\{s\})$ dan $r \in \delta(p, \varepsilon)$, maka:
+   $$r \in \varepsilon\text{-closure}(\{s\})$$
+
+Untuk himpunan state $S \subseteq Q$, penutupan epsilon didefinisikan sebagai:
+$$\varepsilon\text{-closure}(S) = \bigcup_{s \in S} \varepsilon\text{-closure}(\{s\})$$
+
+#### C. Simulasi Paralel NFA (Fungsi Transisi Diperluas $\hat{\delta}$)
+Dalam simulasi pembacaan string $w \in \Sigma^*$ pada NFA, fungsi transisi diperluas $\hat{\delta}$ didefinisikan secara rekursif:
+1. **Basis (String kosong $\varepsilon$)**:
+   $$\hat{\delta}(q_0, \varepsilon) = \varepsilon\text{-closure}(\{q_0\})$$
+2. **Langkah Rekursif (Untuk string $w = xa$ di mana $x \in \Sigma^*$ dan $a \in \Sigma$)**:
+   $$\hat{\delta}(q_0, xa) = \varepsilon\text{-closure}\left( \bigcup_{p \in \hat{\delta}(q_0, x)} \delta(p, a) \right)$$
+
+String $w$ dinyatakan **DITERIMA** oleh NFA jika dan hanya jika hasil transisi diperluas dari state awal mengandung setidaknya satu state penerima:
+$$\hat{\delta}(q_0, w) \cap F \neq \emptyset$$
+
+---
 
 ### 2.2 Format Masukan (Input)
 *   **Regular Expression**: `a*b`
@@ -125,17 +209,21 @@ stateDiagram-v2
 
 ### 2.4 Hasil Luaran (Output)
 *   **Spesifikasi Mesin NFA**:
-    *   **States**: `['s0', 's1', 's2', 's3', 's4', 's5']`
-    *   **Start State**: `s4`
-    *   **Accepting State**: `s5`
+    *   **States ($Q$)**: `['s0', 's1', 's2', 's3', 's4', 's5']`
+    *   **Start State ($q_0$)**: `s4`
+    *   **Accepting State ($F$)**: `s5`
 *   **Status Pengujian**: `✅ DITERIMA (Accepted)`
 *   **Trace Himpunan State (Parallel Tracking)**:
-    | Langkah | Karakter Dibaca | Himpunan State Aktif (termasuk $\varepsilon$-closure) |
-    | :--- | :---: | :--- |
-    | 0 | *Start* | `['s0', 's1', 's3', 's4']` |
-    | 1 | `a` | `['s0', 's1', 's3']` |
-    | 2 | `a` | `['s0', 's1', 's3']` |
-    | 3 | `b` | `['s5']` (Mengandung accepting state `s5`) |
+    Untuk string uji $w = \text{"aab"}$, berikut adalah pelacakan state aktif secara paralel:
+
+    | Langkah ($k$) | Karakter Dibaca ($a$) | Himpunan State Aktif ($\hat{\delta}(q_0, x)$) | Deskripsi / Perhitungan |
+    | :---: | :---: | :--- | :--- |
+    | 0 | — | `['s0', 's1', 's3', 's4']` | $\hat{\delta}(q_0, \varepsilon) = \varepsilon\text{-closure}(\{s_4\}) = \{s_0, s_1, s_3, s_4\}$ |
+    | 1 | `a` | `['s0', 's1', 's3']` | $\varepsilon\text{-closure}(\delta(\{s_0, s_1, s_3, s_4\}, a)) = \varepsilon\text{-closure}(\{s_1\}) = \{s_0, s_1, s_3\}$ |
+    | 2 | `a` | `['s0', 's1', 's3']` | $\varepsilon\text{-closure}(\delta(\{s_0, s_1, s_3\}, a)) = \varepsilon\text{-closure}(\{s_1\}) = \{s_0, s_1, s_3\}$ |
+    | 3 | `b` | `['s5']` | $\varepsilon\text{-closure}(\delta(\{s_0, s_1, s_3\}, b)) = \varepsilon\text{-closure}(\{s_5\}) = \{s_5\}$ |
+
+    Karena $\hat{\delta}(s_4, \text{"aab"}) \cap F = \{s_5\} \cap \{s_5\} = \{s_5\} \neq \emptyset$, string **DITERIMA**.
 
 ### 2.5 Implementasi Kode
 Parser regex dan konstruksi NFA Thompson diimplementasikan melalui kelas `RegexParser` dan `NFA` di file **[engine.py](file:///d:/Nia/Kuliah/SEM4/TBA/engine.py#L55-L255)**:
@@ -175,12 +263,19 @@ def build(node):
         add_trans(t1, EPSILON, s1)
         return s, t
 ```
-**Penjelasan Konstruksi:**
-Fungsi `build(node)` membaca AST hasil parsing regex secara rekursif:
-*   **Symbol/Epsilon**: Membuat dua state baru dan menghubungkannya dengan transisi simbol atau epsilon ($\varepsilon$).
-*   **Concat**: Menghubungkan state penerima sub-NFA pertama dengan state awal sub-NFA kedua menggunakan transisi $\varepsilon$.
-*   **Union (`|`)**: Membuat jalur paralel dari state awal baru ke kedua sub-NFA menggunakan $\varepsilon$, lalu menggabungkan kedua state akhirnya ke state akhir baru.
-*   **Kleene Star (`*`)**: Menyediakan jalur perulangan kembali ($\varepsilon$ dari akhir ke awal sub-NFA) serta jalur bypass langsung (dari start baru ke end baru).
+
+**Penjelasan Konstruksi (Thompson's Rules):**
+Fungsi `build(node)` membaca AST hasil parsing regex secara rekursif dan membangun sub-NFA berdasarkan kaidah Thompson:
+1.  **Symbol (`symbol`)**: Membuat dua state baru ($s, t$) dan membuat satu transisi bertanda simbol $a \in \Sigma$ dari $s \rightarrow t$:
+    $$\delta(s, a) = \{t\}$$
+2.  **Epsilon (`epsilon`)**: Membuat dua state baru ($s, t$) dan menghubungkannya dengan transisi $\varepsilon$:
+    $$\delta(s, \varepsilon) = \{t\}$$
+3.  **Concatenation (`concat`)**: Menyambungkan state akhir sub-NFA pertama ($t_1$) dengan state awal sub-NFA kedua ($s_2$) via transisi $\varepsilon$:
+    $$\delta(t_1, \varepsilon) = \{s_2\}$$
+4.  **Union (`union`)**: Membuat start state baru $s$ dan end state baru $t$. State $s$ dihubungkan ke $s_1$ dan $s_2$ dengan $\varepsilon$, dan state akhir $t_1$ serta $t_2$ dihubungkan ke $t$ dengan $\varepsilon$:
+    $$\delta(s, \varepsilon) = \{s_1, s_2\}, \quad \delta(t_1, \varepsilon) = \{t\}, \quad \delta(t_2, \varepsilon) = \{t\}$$
+5.  **Kleene Star (`star`)**: Membuat start state baru $s$ dan end state baru $t$. Menambahkan loop kembali dari $t_1 \rightarrow s_1$ dan jalur bypass langsung dari $s \rightarrow t$:
+    $$\delta(s, \varepsilon) = \{s_1, t\}, \quad \delta(t_1, \varepsilon) = \{s_1, t\}$$
 
 #### B. Simulasi NFA (`NFA`)
 ```python
@@ -212,16 +307,39 @@ class NFA:
         accepted = any(s in self.accepts for s in current)
         return accepted, trace
 ```
+
 **Penjelasan Simulasi:**
-1.  **`epsilon_closure`**: Menghitung kumpulan state yang dapat dicapai dari sekumpulan state dasar hanya dengan menelusuri transisi $\varepsilon$ (DFS/BFS internal).
-2.  **`run`**: Menelusuri string dengan melacak kumpulan state aktif secara paralel. Setiap membaca simbol baru, program mencari semua state tujuan dari seluruh state aktif saat ini, kemudian menghitung penutupan epsilon (`epsilon_closure`) dari himpunan state baru tersebut.
+1.  **`epsilon_closure`**: Menghitung penutupan epsilon secara iteratif dengan penelusuran DFS (menggunakan *stack*). Algoritma menambahkan setiap state tetangga yang terhubung lewat transisi $\varepsilon$ ke dalam set penutupan hingga tidak ada lagi state baru yang dapat dijangkau.
+2.  **`run`**: Menelusuri string dengan melacak kumpulan state aktif secara paralel. Setiap membaca simbol baru, program mencari semua state tujuan dari seluruh state aktif saat ini, kemudian menghitung penutupan epsilon (`epsilon_closure`) dari himpunan state baru tersebut. Hasil pengujian bernilai benar jika $\hat{\delta}(q_0, w) \cap F \neq \emptyset$.
+
+### 2.6 Implementasi Antarmuka (Streamlit UI)
+Logika antarmuka pengolahan ekspresi reguler dan visualisasi NFA Thompson didefinisikan pada berkas **[regex_nfa.py](file:///d:/Nia/Kuliah/SEM4/TBA/regex_nfa.py#L13-L124)**:
+- **`render()`**: Menerima input pola regex dari pengguna dan memanggil fungsi `regex_to_nfa` dari `engine.py`.
+- **Ekspansi Detail**: Menampilkan tabel transisi lengkap dari NFA yang digenerate dengan penulisan representasi transisi epsilon $\varepsilon$ yang rapi.
+- **Visualisasi Parallel-Tracking**: Karena NFA dapat berada di beberapa state sekaligus, antarmuka melacak himpunan state aktif (`active_states`) pada setiap iterasi pembacaan string dan meng-highlight semua state aktif tersebut di dalam graf SVG dengan `render_nfa_animated()`.
 
 ---
 
 ## Fitur 3: Minimisasi DFA (Partition Refinement)
 
 ### 3.1 Deskripsi & Teori
-Mereduksi jumlah state pada DFA agar menghasilkan mesin yang paling efisien dengan bahasa yang sama menggunakan algoritma **Partition Refinement** (Table-Filling).
+Mereduksi jumlah state pada DFA bertujuan untuk menghasilkan mesin automata minimal (paling efisien) yang tetap menerima bahasa yang **persis sama** dengan DFA asli. Minimisasi DFA didasarkan pada konsep **ekuivalensi state** (Teorema Myhill-Nerode).
+
+Dua buah state $p$ dan $q$ dikatakan **ekuivalen** (ditulis $p \equiv q$) jika dan hanya jika untuk setiap string masukan $w \in \Sigma^*$, transisi dari kedua state tersebut berakhir pada status penerimaan yang sama:
+$$\delta^*(p, w) \in F \iff \delta^*(q, w) \in F$$
+
+Jika terdapat suatu string $w$ sedemikian rupa sehingga salah satu state berakhir di accepting state sedangkan state lainnya berakhir di non-accepting state, maka kedua state tersebut dikatakan **dapat dibedakan** (*distinguishable*):
+$$\exists w \in \Sigma^* \quad \text{s.t.} \quad (\delta^*(p, w) \in F \land \delta^*(q, w) \notin F) \lor (\delta^*(p, w) \notin F \land \delta^*(q, w) \in F)$$
+
+Algoritma **Partition Refinement** bekerja dengan membagi himpunan seluruh state $Q$ menjadi kelompok-kelompok partisi yang saling lepas (*disjoint blocks*):
+1. **Partisi Awal ($P_0$)**: Membagi seluruh state yang *reachable* berdasarkan kriteria penerimaan awal:
+   $$P_0 = \{F, Q \setminus F\}$$
+   di mana $F$ adalah himpunan accepting states dan $Q \setminus F$ adalah himpunan non-accepting states.
+2. **Iterasi Penghalusan (Refinement) ($P_{k} \rightarrow P_{k+1}$)**: Dua buah state $p$ dan $q$ yang berada pada kelompok yang sama di $P_k$ akan tetap berada pada kelompok yang sama di $P_{k+1}$ jika dan hanya jika untuk setiap simbol alfabet $a \in \Sigma$, transisi mereka mengarah ke kelompok yang sama pada partisi $P_k$:
+   $$\forall a \in \Sigma, \quad [\delta(p, a)]_{P_k} = [\delta(q, a)]_{P_k}$$
+   di mana $[s]_{P_k}$ menyatakan kelompok dalam partisi $P_k$ yang mengandung state $s$. Jika kondisi ini tidak dipenuhi, kelompok tersebut harus dipecah (*split*).
+3. **Kondisi Berhenti**: Iterasi dihentikan ketika partisi sudah stabil, yaitu ketika tidak ada lagi kelompok yang terpecah pada iterasi berikutnya:
+   $$P_{k+1} = P_k$$
 
 ### 3.2 Format Masukan (Input)
 *   **States**: `q0, q1, q2, q3, q4`
@@ -243,19 +361,45 @@ Mereduksi jumlah state pada DFA agar menghasilkan mesin yang paling efisien deng
     ```
 
 ### 3.3 Proses Partisi (Refinement)
-1.  **Partisi Awal ($P_0$)**: 
-    *   Kelompok Penerima ($G_1$): `{q3, q4}`
-    *   Kelompok Non-Penerima ($G_2$): `{q0, q1, q2}`
-2.  **Iterasi 1 ($P_1$)**:
-    *   Uji transisi kelompok $G_2$:
-        *   `q0` membaca `a` $\rightarrow$ `q1` (di $G_2$), membaca `b` $\rightarrow$ `q2` (di $G_2$)
-        *   `q1` membaca `a` $\rightarrow$ `q1` (di $G_2$), membaca `b` $\rightarrow$ `q3` (di $G_1$)
-        *   `q2` membaca `a` $\rightarrow$ `q2` (di $G_2$), membaca `b` $\rightarrow$ `q4` (di $G_1$)
-    *   Karena transisi `q0` berbeda dengan `q1` dan `q2`, kelompok $G_2$ terpecah menjadi:
-        *   `{q0}`
-        *   `{q1, q2}`
-    *   Uji transisi kelompok $G_1$: keduanya tetap berada di $G_1$.
-3.  **Partisi Akhir ($P_{\text{final}}$)**: `{q0}`, `{q1, q2}`, `{q3, q4}`.
+Berikut adalah simulasi matematis pembagian partisi untuk DFA contoh di atas:
+
+1. **Partisi Awal ($P_0$)**:
+   Membagi state menjadi kelompok accepting ($G_1$) dan non-accepting ($G_2$):
+   $$G_1 = \{q_3, q_4\}, \quad G_2 = \{q_0, q_1, q_2\}$$
+   $$P_0 = \{G_1, G_2\}$$
+
+2. **Iterasi 1 ($P_1$)**:
+   Uji setiap state di masing-masing kelompok berdasarkan ke kelompok mana transisinya mengarah untuk alfabet $\Sigma = \{a, b\}$.
+   
+   * **Menguji Kelompok $G_1 = \{q_3, q_4\}$**:
+     * Untuk $q_3$:
+       $$\delta(q_3, a) = q_3 \in G_1 \quad \text{dan} \quad \delta(q_3, b) = q_3 \in G_1 \implies \text{Signature}(q_3) = (G_1, G_1)$$
+     * Untuk $q_4$:
+       $$\delta(q_4, a) = q_4 \in G_1 \quad \text{dan} \delta(q_4, b) = q_4 \in G_1 \implies \text{Signature}(q_4) = (G_1, G_1)$$
+     * Karena tanda tangan (*signature*) $q_3$ dan $q_4$ sama, $G_1$ **tidak pecah**.
+
+   * **Menguji Kelompok $G_2 = \{q_0, q_1, q_2\}$**:
+     * Untuk $q_0$:
+       $$\delta(q_0, a) = q_1 \in G_2 \quad \text{dan} \quad \delta(q_0, b) = q_2 \in G_2 \implies \text{Signature}(q_0) = (G_2, G_2)$$
+     * Untuk $q_1$:
+       $$\delta(q_1, a) = q_1 \in G_2 \quad \text{dan} \quad \delta(q_1, b) = q_3 \in G_1 \implies \text{Signature}(q_1) = (G_2, G_1)$$
+     * Untuk $q_2$:
+       $$\delta(q_2, a) = q_2 \in G_2 \quad \text{dan} \quad \delta(q_2, b) = q_4 \in G_1 \implies \text{Signature}(q_2) = (G_2, G_1)$$
+     * Karena tanda tangan $q_0$ berbeda dengan $q_1$ dan $q_2$, kelompok $G_2$ terpecah menjadi dua kelompok baru:
+       $$G_{2a} = \{q_0\} \quad \text{dan} \quad G_{2b} = \{q_1, q_2\}$$
+
+   Hasil Partisi Iterasi 1:
+   $$P_1 = \{\{q_3, q_4\}, \{q_0\}, \{q_1, q_2\}\}$$
+
+3. **Iterasi 2 ($P_2$)**:
+   Uji kembali kelompok-kelompok yang tersisa di $P_1$:
+   * Kelompok $\{q_0\}$ hanya memiliki 1 state, sehingga tidak dapat dipecah lagi.
+   * Kelompok $\{q_3, q_4\}$ dan $\{q_1, q_2\}$ jika diuji transisinya terhadap partisi $P_1$ menghasilkan tanda tangan yang homogen untuk masing-masing anggotanya.
+   * Karena tidak ada kelompok yang pecah lagi pada iterasi ini, algoritma berhenti ($P_2 = P_1$).
+
+4. **Partisi Akhir ($P_{\text{final}}$)**:
+   $$P_{\text{final}} = \{\{q_0\}, \{q_1, q_2\}, \{q_3, q_4\}\}$$
+   Himpunan state tereduksi diwakili oleh perwakilan setiap kelompok, menghasilkan 3 state baru.
 
 ### 3.4 Perbandingan Graf Automata
 
@@ -371,6 +515,12 @@ def minimize_dfa(dfa: DFA):
 3.  **Langkah 3**: Loop pembagian (refinement) menggunakan tanda tangan transisi (`signature`). Tanda tangan ini merepresentasikan ke kelompok mana suatu state berpindah untuk setiap simbol input. Jika state-state dalam satu kelompok memiliki tanda tangan yang berbeda, kelompok tersebut dipecah.
 4.  **Langkah 4**: Mengonversi setiap kelompok partisi akhir yang stabil menjadi state minimal baru dan menyusun ulang tabel transisi.
 
+### 3.7 Implementasi Antarmuka (Streamlit UI)
+Tata letak untuk menampilkan proses minimisasi DFA diatur dalam berkas **[dfa_minimization.py](file:///d:/Nia/Kuliah/SEM4/TBA/dfa_minimization.py#L24-L115)**:
+- **Penyajian Metrik (`st.metric`)**: Menyediakan panel ringkasan informasi berupa jumlah state awal, jumlah state minimal setelah pemrosesan, dan persentase/jumlah pengurangan state.
+- **Visualisasi Komparatif**: Menampilkan graf DFA Asli dan DFA Minimal secara berdampingan (side-by-side) menggunakan layout kolom (`st.columns`) dan `st.graphviz_chart()` untuk memudahkan analisis pengguna.
+- **Uji Konsistensi**: Menyediakan simulator kecil di bagian bawah halaman untuk langsung menguji string pada hasil DFA minimal guna memastikan bahwa perilakunya tetap konsisten dengan mesin aslinya.
+
 ---
 
 ## Fitur 4: Cek Ekuivalensi Dua DFA (Product Construction + BFS)
@@ -452,6 +602,33 @@ def dfa_equivalent(dfa1: DFA, dfa2: DFA):
 1.  **Product States & BFS**: Algoritma memeriksa pasangan state gabungan `(s1, s2)` mulai dari start state kedua DFA. Penelusuran menggunakan struktur BFS untuk menemukan string pembeda terpendek.
 2.  **State Mati (`DEAD`)**: Ditambahkan untuk menangani kasus di mana transisi tidak didefinisikan secara lengkap pada DFA masukan (DFA parsial), sehingga transisinya mengarah ke state perangkap virtual.
 3.  **Pendeteksian Perbedaan**: Jika di suatu pasangan state `(s1, s2)` yang dicapai oleh lintasan `path` memiliki status penerimaan berbeda (`is_accept` bernilai `True` pada satu DFA dan `False` pada DFA lainnya), fungsi langsung berhenti dan mengembalikan string pembeda tersebut. Jika antrean kosong tanpa menemukan perbedaan, kedua DFA terbukti ekuivalen.
+
+### 4.5 Implementasi Antarmuka (Streamlit UI)
+Logika antarmuka pengujian ekuivalensi dua DFA terletak pada berkas **[dfa_equivalence.py](file:///d:/Nia/Kuliah/SEM4/TBA/dfa_equivalence.py#L38-L152)**:
+- **`input_dfa_form`**: Sub-fungsi dinamis untuk menampilkan form input spesifikasi automata (states, alfabet, start state, accepting states, transisi) secara modular baik untuk DFA 1 maupun DFA 2.
+- **Penyajian String Pembeda**: Apabila kedua DFA tidak ekuivalen, program mengeksekusi string pembeda tersebut pada kedua DFA secara paralel, meng-highlight lintasan dan state terakhirnya masing-masing, kemudian menampilkan status akhir (Accept/Reject) untuk menunjukkan secara visual di mana letak perbedaan penerimaan bahasa keduanya.
+
+---
+
+## Helper Sistem & Tema Visual
+
+Selain berkas fitur utama, simulator ini dilengkapi dengan infrastruktur visualisasi dan tema kustom:
+
+### 1. Visualisasi Graf & Animasi SVG ([utils.py](file:///d:/Nia/Kuliah/SEM4/TBA/utils.py))
+Modul helper ini menangani konversi automata Python ke Graphviz SVG:
+- **`build_dfa_graph(dfa)`** & **`build_nfa_graph(nfa)`**: Membangun visualisasi terarah (*directed graph*) dari data transisi. State penerima akan otomatis digambar dengan lingkaran ganda (*double circle*).
+- **`_inject_animations(svg_str, highlight_states, accepted)`**: Melakukan pemindaian regex pada kode XML SVG mentah yang dihasilkan oleh Graphviz untuk menyuntikkan kelas CSS kustom (`state-active`, `state-accepted`, atau `state-rejected`) pada node yang sedang aktif selama pengujian string.
+- **`render_dfa_animated()`** & **`render_nfa_animated()`**: Wrapper utama untuk menggabungkan kode SVG dengan kontainer HTML kustom agar bisa ditampilkan dalam Streamlit menggunakan `components.html()`.
+
+### 2. Desain & Animasi Keyframes ([styles.py](file:///d:/Nia/Kuliah/SEM4/TBA/styles.py))
+Mendefinisikan gaya premium aplikasi:
+- **Tema Warna**: Palet warna gelap modern dengan zinc background kustom (`#09090b`), aksen cyan (`#06b6d4`), kuning amber (`#f59e0b`), emerald green (`#10b981`), dan rose red (`#f43f5e`).
+- **CSS Keyframes (`ANIM_CSS`)**:
+  - `glow-active`: Animasi pulsasi berpendar jingga-kuning pada state yang sedang ditelusuri.
+  - `glow-accept`: Efek pendaran hijau bernapas pada state penerima di akhir pembacaan string yang berhasil.
+  - `glow-reject`: Efek pendaran kedip merah berulang pada state penolakan apabila string ditolak.
+  - `scale-breathe`: Efek perbesaran teks state untuk efek interaktif.
+- **Global Theme Override (`THEME_CSS`)**: Menyuntikkan CSS global untuk memodifikasi komponen Streamlit seperti font (Outfit untuk header, JetBrains Mono untuk input/code, Plus Jakarta Sans untuk paragraf), gradien background aplikasi, serta gaya interaktif tombol hover kustom.
 
 ---
 *Laporan ini di-generate secara otomatis untuk mendokumentasikan fungsionalitas utama Smart Automata Simulator.*

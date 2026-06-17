@@ -35,7 +35,7 @@ def render():
             start_input = st.text_input("Start State:", "q0", key="dfa1_start")
             accepts_input = st.text_input("Accepting States (pisah koma):", "q2", key="dfa1_accepts")
 
-        st.markdown("**Transisi** — format: `state_asal, simbol, state_tujuan` (satu baris per transisi)")
+        st.markdown("**Transisi** (Format: `state_asal, simbol, state_tujuan`)")
         trans_default = "q0, 0, q0\nq0, 1, q1\nq1, 0, q2\nq1, 1, q0\nq2, 0, q1\nq2, 1, q2"
         trans_input = st.text_area("Transisi DFA:", value=trans_default, height=160, key="dfa1_trans")
 
