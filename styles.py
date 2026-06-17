@@ -144,9 +144,8 @@ p, li, label {{ color: {COLOR_TEXT} !important; }}
 
 /* ── Buttons ── */
 .stButton > button {{
-    background: linear-gradient(135deg, {COLOR_BLUE}, {COLOR_LAVENDER});
-    color: {COLOR_BASE};
-    border: none;
+    background: linear-gradient(135deg, {COLOR_BLUE}, {COLOR_LAVENDER}) !important;
+    border: 2px solid transparent !important;
     border-radius: 10px;
     font-weight: 600;
     font-size: 14px;
@@ -156,10 +155,26 @@ p, li, label {{ color: {COLOR_TEXT} !important; }}
 .stButton > button:hover {{
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(137,180,250,0.4);
-    background: linear-gradient(135deg, {COLOR_LAVENDER}, {COLOR_MAUVE});
+    background: linear-gradient(135deg, {COLOR_LAVENDER}, {COLOR_MAUVE}) !important;
 }}
 .stButton > button:active {{
     transform: translateY(0px);
+    background: linear-gradient(135deg, {COLOR_PEACH}, {COLOR_YELLOW}) !important;
+    border-color: transparent !important;
+    box-shadow: inset 0 3px 5px rgba(0,0,0,0.2) !important;
+}}
+.stButton > button:focus {{
+    background: linear-gradient(135deg, {COLOR_PEACH}, {COLOR_YELLOW}) !important;
+    border-color: transparent !important;
+    box-shadow: 0 0 0 2px rgba(254,179,135,0.4) !important;
+}}
+
+/* Forcing all button text (including inside paragraphs/spans) to be dark in all states */
+.stButton > button,
+.stButton > button *,
+button[data-testid^="stBaseButton"],
+button[data-testid^="stBaseButton"] * {{
+    color: {COLOR_BASE} !important;
 }}
 
 /* ── Alerts ── */
@@ -185,6 +200,77 @@ hr {{ border-color: {COLOR_SURFACE0} !important; }}
     border-radius: 8px !important;
     color: {COLOR_TEXT} !important;
 }}
+[data-testid="stSelectbox"] > div > div:focus,
+[data-testid="stSelectbox"] > div > div:focus-within,
+[data-testid="stSelectbox"] > div > div:active {{
+    border-color: {COLOR_BLUE} !important;
+    box-shadow: 0 0 0 2px rgba(137,180,250,0.2) !important;
+}}
+
+/* ── Selectbox Dropdown Menu (Popover) ── */
+div[data-baseweb="popover"] {{
+    background-color: {COLOR_MANTLE} !important;
+    border: 1px solid {COLOR_SURFACE1} !important;
+    border-radius: 8px !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}}
+div[data-baseweb="popover"] ul {{
+    background-color: {COLOR_MANTLE} !important;
+    border-radius: 8px !important;
+    padding: 6px !important;
+}}
+div[data-baseweb="popover"] li {{
+    background-color: transparent !important;
+    color: {COLOR_TEXT} !important;
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    margin: 2px 0 !important;
+    transition: all 0.15s ease !important;
+    font-size: 14px !important;
+}}
+div[data-baseweb="popover"] li:hover,
+div[data-baseweb="popover"] li[aria-selected="true"] {{
+    background-color: {COLOR_SURFACE0} !important;
+    color: {COLOR_BLUE} !important;
+    cursor: pointer !important;
+}}
+
+/* Direct Selectors for newer Streamlit selectbox listboxes */
+ul[role="listbox"] {{
+    background-color: {COLOR_MANTLE} !important;
+    border: 1px solid {COLOR_SURFACE1} !important;
+    border-radius: 8px !important;
+    padding: 6px !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}}
+div:has(> ul[role="listbox"]) {{
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}}
+li[role="option"],
+.er6m0k90 {{
+    background-color: transparent !important;
+    color: {COLOR_TEXT} !important;
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    margin: 2px 0 !important;
+    transition: all 0.15s ease !important;
+}}
+li[role="option"] *,
+.er6m0k90 * {{
+    background-color: transparent !important;
+    color: inherit !important;
+}}
+li[role="option"]:hover,
+li[role="option"][aria-selected="true"],
+.er6m0k90:hover,
+.er6m0k90[aria-selected="true"] {{
+    background-color: {COLOR_SURFACE0} !important;
+    color: {COLOR_BLUE} !important;
+    cursor: pointer !important;
+}}
+
 
 /* ── Graphviz fallback container ── */
 [data-testid="stGraphVizChart"] {{
