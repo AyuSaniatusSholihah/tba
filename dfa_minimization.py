@@ -1,7 +1,6 @@
 """
 dfa_minimization.py
-===================
-Fitur 3: Minimisasi DFA menggunakan Partition Refinement (Table-Filling)
+Fitur 3: Minimisasi DFA
 """
 
 import streamlit as st
@@ -23,13 +22,9 @@ def parse_transitions_dfa(text):
 
 
 def render():
-    st.header("③ Minimisasi DFA")
-    st.caption(
-        "Masukkan DFA yang ingin diminimalkan. Program akan menerapkan "
-        "**algoritma Partition Refinement** untuk mereduksi jumlah state."
-    )
+    st.header("3. Minimisasi DFA")
 
-    with st.expander("⚙️ Definisi DFA", expanded=True):
+    with st.expander("Definisi DFA", expanded=True):
         col1, col2 = st.columns(2)
         with col1:
             states_input = st.text_input("States (pisah koma):", "q0, q1, q2, q3, q4", key="min_states")
@@ -52,7 +47,7 @@ def render():
         )
         trans_input = st.text_area("Transisi DFA:", value=trans_default, height=200, key="min_trans")
 
-        run_btn = st.button("⚡ Minimalkan DFA", key="min_run")
+        run_btn = st.button("Minimalkan DFA", key="min_run")
 
     if run_btn:
         try:
@@ -66,27 +61,25 @@ def render():
             st.session_state['min_original'] = original
             st.session_state['min_minimized'] = minimized
         except Exception as e:
-            st.error(f"❌ Error: {e}")
+            st.error(f"Error: {e}")
 
     if 'min_original' in st.session_state:
         original = st.session_state['min_original']
         minimized = st.session_state['min_minimized']
 
-        # Metric summary
+        # Ringkasan metrik
         col_m1, col_m2, col_m3 = st.columns(3)
         col_m1.metric("State Awal", len(original.states))
         col_m2.metric("State Minimal", len(minimized.states))
         reduction = len(original.states) - len(minimized.states)
-        col_m3.metric("Pengurangan", f"{reduction} state",
-                      delta=f"-{reduction}" if reduction > 0 else "0",
-                      delta_color="normal")
+        col_m3.metric("Pengurangan", f"{reduction} state")
 
         if reduction == 0:
-            st.info("ℹ️ DFA ini sudah minimal! Tidak ada state yang bisa digabungkan.")
+            st.info("DFA ini sudah minimal! Tidak ada state yang bisa digabungkan.")
         else:
-            st.success(f"✅ DFA berhasil diminimalkan dari {len(original.states)} menjadi {len(minimized.states)} state.")
+            st.success(f"DFA berhasil diminimalkan dari {len(original.states)} menjadi {len(minimized.states)} state.")
 
-        # Tampilkan kedua graf berdampingan
+        # Tampilkan graf
         col_g1, col_g2 = st.columns(2)
         with col_g1:
             st.subheader("DFA Asli")
@@ -96,8 +89,8 @@ def render():
             st.subheader("DFA Minimal")
             st.graphviz_chart(build_dfa_graph(minimized).source, use_container_width=True)
 
-        # Detail transisi DFA minimal
-        with st.expander("📊 Detail DFA Minimal"):
+        # Detail DFA minimal
+        with st.expander("Detail DFA Minimal"):
             st.markdown(f"- **States:** `{sorted(minimized.states)}`")
             st.markdown(f"- **Alfabet:** `{sorted(minimized.alphabet)}`")
             st.markdown(f"- **Start:** `{minimized.start}`")
@@ -106,16 +99,16 @@ def render():
             for (fs, sym), ts in sorted(minimized.transitions.items()):
                 st.markdown(f"  - `({fs}, {sym})` → `{ts}`")
 
-        # Test string pada DFA minimal
+        # Uji string pada DFA minimal
         st.divider()
-        st.subheader("🧪 Uji String pada DFA Minimal")
+        st.subheader("Uji String pada DFA Minimal")
         test_str = st.text_input("String uji:", key="min_teststr",
                                  placeholder="Ketik string untuk diuji...")
-        if st.button("▶️ Uji", key="min_test"):
+        if st.button("Uji", key="min_test"):
             accepted, trace = minimized.run(test_str)
             if accepted:
-                st.success(f"✅ String **'{test_str}'** DITERIMA oleh DFA Minimal.")
+                st.success(f"String **'{test_str}'** DITERIMA oleh DFA Minimal.")
             else:
-                st.error(f"❌ String **'{test_str}'** DITOLAK oleh DFA Minimal.")
+                st.error(f"String **'{test_str}'** DITOLAK oleh DFA Minimal.")
             trace_str = " → ".join(f"`{s}`" for s in trace)
             st.markdown(f"**Lintasan:** {trace_str}")

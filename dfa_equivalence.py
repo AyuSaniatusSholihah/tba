@@ -1,7 +1,6 @@
 """
 dfa_equivalence.py
-==================
-Fitur 4: Cek Ekuivalensi Dua DFA menggunakan Product Construction + BFS
+Fitur 4: Cek Ekuivalensi Dua DFA
 """
 
 import streamlit as st
@@ -37,15 +36,10 @@ def input_dfa_form(prefix, label, default_states, default_alpha, default_start,
 
 
 def render():
-    st.header("④ Cek Ekuivalensi Dua DFA")
-    st.caption(
-        "Periksa apakah dua DFA mengenali **bahasa yang persis sama** "
-        "menggunakan **Product Construction + BFS**. "
-        "Jika tidak ekuivalen, program akan menampilkan string pembeda."
-    )
+    st.header("4. Cek Ekuivalensi Dua DFA")
 
-    # --- DFA 1 ---
-    with st.expander("⚙️ Definisi DFA 1", expanded=True):
+    # DFA 1
+    with st.expander("Definisi DFA 1", expanded=True):
         s1, a1, i1, f1, t1 = input_dfa_form(
             prefix="eq1",
             label="DFA 1",
@@ -56,8 +50,8 @@ def render():
             default_trans="q0, a, q1\nq0, b, q0\nq1, a, q1\nq1, b, q0"
         )
 
-    # --- DFA 2 ---
-    with st.expander("⚙️ Definisi DFA 2", expanded=True):
+    # DFA 2
+    with st.expander("Definisi DFA 2", expanded=True):
         s2, a2, i2, f2, t2 = input_dfa_form(
             prefix="eq2",
             label="DFA 2",
@@ -68,7 +62,7 @@ def render():
             default_trans="p0, a, p1\np0, b, p0\np1, a, p2\np1, b, p0\np2, a, p2\np2, b, p0"
         )
 
-    run_btn = st.button("🔍 Cek Ekuivalensi", key="eq_run", use_container_width=True)
+    run_btn = st.button("Cek Ekuivalensi", key="eq_run", use_container_width=True)
 
     if run_btn:
         try:
@@ -93,7 +87,7 @@ def render():
             st.session_state['eq_result'] = (is_eq, dist_str)
 
         except Exception as e:
-            st.error(f"❌ Error: {e}")
+            st.error(f"Error: {e}")
 
     if 'eq_result' in st.session_state:
         dfa1 = st.session_state['eq_dfa1']
@@ -102,7 +96,7 @@ def render():
 
         st.divider()
 
-        # Visualisasi kedua DFA
+        # Visualisasi DFA
         col_g1, col_g2 = st.columns(2)
         with col_g1:
             st.markdown("**DFA 1**")
@@ -115,14 +109,14 @@ def render():
 
         # Hasil
         if is_eq:
-            st.success("✅ **EKUIVALEN** — Kedua DFA mengenali bahasa yang persis sama.")
+            st.success("**EKUIVALEN** — Kedua DFA mengenali bahasa yang persis sama.")
         else:
-            st.error("❌ **TIDAK EKUIVALEN** — Kedua DFA mengenali bahasa yang berbeda.")
+            st.error("**TIDAK EKUIVALEN** — Kedua DFA mengenali bahasa yang berbeda.")
 
             if dist_str:
                 st.markdown(f"**String Pembeda:** `{dist_str}`")
 
-                # Tunjukkan perbedaan
+                # Tampilkan perbedaan
                 if dist_str != "(string kosong / epsilon)":
                     r1, trace1 = dfa1.run(dist_str)
                     r2, trace2 = dfa2.run(dist_str)

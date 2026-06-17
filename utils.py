@@ -1,8 +1,6 @@
 """
 utils.py
-========
-Fungsi visualisasi: membangun Graphviz graph dan meng-inject animasi ke SVG.
-Tidak mengandung CSS langsung — semua desain diimpor dari styles.py.
+Fungsi pembantu visualisasi Graphviz.
 """
 
 import re
@@ -16,9 +14,7 @@ from styles import (
 )
 
 
-# =====================================================================
-# =================== Helper warna node/edge ==========================
-# =====================================================================
+# Helper Warna Node/Edge
 
 def _node_colors(is_active, accepted):
     """Return (color, fillcolor, fontcolor, penwidth) untuk sebuah state node."""
@@ -33,15 +29,13 @@ def _node_colors(is_active, accepted):
 
 
 def _edge_color(is_active):
-    return (COLOR_YELLOW, "2.5") if is_active else ("#6c7086", "1.2")
+    return (COLOR_YELLOW, "2.5") if is_active else ("#475569", "1.2")
 
 
 _GRAPH_ATTRS = {"rankdir": "LR", "bgcolor": COLOR_BASE, "fontname": "Helvetica"}
 
 
-# =====================================================================
-# =================== Graphviz graph builders =========================
-# =====================================================================
+# Graphviz Graph Builders
 
 def build_dfa_graph(dfa, highlight_state=None, highlight_edge=None, accepted=None):
     """Bangun Graphviz Digraph untuk DFA, dengan optional highlight state/edge."""
@@ -109,9 +103,7 @@ def build_nfa_graph(nfa, highlight_states=None, highlight_edges=None, accepted=N
     return dot
 
 
-# =====================================================================
-# =================== SVG + Animasi CSS ================================
-# =====================================================================
+# Pengaturan SVG dan Animasi
 
 def _inject_animations(svg_str, highlight_states, accepted):
     """
@@ -146,9 +138,7 @@ def _inject_animations(svg_str, highlight_states, accepted):
     return re.sub(r"(<svg[^>]*>)", r"\1" + ANIM_CSS, svg_patched, count=1)
 
 
-# =====================================================================
-# =================== Public render functions =========================
-# =====================================================================
+# Fungsi Render Publik
 
 def render_dfa_animated(dfa, highlight_state=None, highlight_edge=None,
                         accepted=None, height=380):
