@@ -116,7 +116,6 @@ def render():
         # Hasil
         if is_eq:
             st.success("✅ **EKUIVALEN** — Kedua DFA mengenali bahasa yang persis sama.")
-            st.balloons()
         else:
             st.error("❌ **TIDAK EKUIVALEN** — Kedua DFA mengenali bahasa yang berbeda.")
 
