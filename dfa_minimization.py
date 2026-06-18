@@ -5,20 +5,7 @@ Fitur 3: Minimisasi DFA
 
 import streamlit as st
 from engine import DFA, minimize_dfa
-from utils import build_dfa_graph
-
-
-def parse_transitions_dfa(text):
-    transitions = {}
-    for line in text.strip().splitlines():
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-        parts = [p.strip() for p in line.split(',')]
-        if len(parts) != 3:
-            raise ValueError(f"Format salah: '{line}'. Gunakan: state,simbol,state_tujuan")
-        transitions[(parts[0], parts[1])] = parts[2]
-    return transitions
+from utils import build_dfa_graph, parse_transitions_dfa
 
 
 def render():

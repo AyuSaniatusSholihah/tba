@@ -165,7 +165,7 @@ class RegexParser:
                 raise ValueError("Tanda kurung tidak seimbang, kurang ')'")
             self.advance()
             return node
-        elif ch is not None and ch.isalnum():
+        elif ch is not None and ch not in ('|', ')', '*', '+', '?', '(', EPSILON, '@'):
             self.advance()
             return ('symbol', ch)
         elif ch == EPSILON or ch == '@':

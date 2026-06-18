@@ -1,11 +1,37 @@
 """
 utils.py
-Fungsi pembantu visualisasi Graphviz.
+Fungsi pembantu: parsing input transisi & visualisasi Graphviz.
 """
 
 import re
 import graphviz
 from engine import EPSILON
+
+
+# =====================================================================
+# ====================== Input Parser =================================
+# =====================================================================
+
+def parse_transitions_dfa(text):
+    """
+    Parse teks input transisi DFA menjadi dictionary Python.
+    Format tiap baris: state_asal, simbol, state_tujuan
+    Baris kosong dan baris diawali '#' diabaikan.
+    """
+    transitions = {}
+    for line in text.strip().splitlines():
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        parts = [p.strip() for p in line.split(',')]
+        if len(parts) != 3:
+            raise ValueError(
+                f"Format salah: '{line}'. Gunakan: state_asal, simbol, state_tujuan"
+            )
+        transitions[(parts[0], parts[1])] = parts[2]
+    return transitions
+
+
 from styles import (
     ANIM_CSS, SVG_WRAPPER,
     COLOR_BASE, COLOR_SURFACE0,
@@ -148,7 +174,15 @@ def render_dfa_animated(dfa, highlight_state=None, highlight_edge=None,
     """
     dot = build_dfa_graph(dfa, highlight_state=highlight_state,
                           highlight_edge=highlight_edge, accepted=accepted)
-    svg = dot.pipe(format="svg").decode("utf-8")
+    try:
+        svg = dot.pipe(format="svg").decode("utf-8")
+    except Exception:
+        return (
+            f'<div style="background:{COLOR_BASE};border-radius:12px;padding:20px;'
+            f'border:1px solid {COLOR_SURFACE0};color:#f43f5e;font-family:monospace;">'
+            f'⚠️ Graphviz tidak ditemukan. Pastikan sudah terinstall dan PATH sudah diset, '
+            f'lalu restart VS Code / terminal.</div>'
+        )
     animated = _inject_animations(svg, {str(highlight_state)} if highlight_state else set(), accepted)
     return SVG_WRAPPER.format(bg=COLOR_BASE, border=COLOR_SURFACE0, height=height, svg=animated)
 
@@ -161,6 +195,14 @@ def render_nfa_animated(nfa, highlight_states=None, highlight_edges=None,
     """
     dot = build_nfa_graph(nfa, highlight_states=highlight_states,
                           highlight_edges=highlight_edges, accepted=accepted)
-    svg = dot.pipe(format="svg").decode("utf-8")
+    try:
+        svg = dot.pipe(format="svg").decode("utf-8")
+    except Exception:
+        return (
+            f'<div style="background:{COLOR_BASE};border-radius:12px;padding:20px;'
+            f'border:1px solid {COLOR_SURFACE0};color:#f43f5e;font-family:monospace;">'
+            f'⚠️ Graphviz tidak ditemukan. Pastikan sudah terinstall dan PATH sudah diset, '
+            f'lalu restart VS Code / terminal.</div>'
+        )
     animated = _inject_animations(svg, highlight_states or set(), accepted)
     return SVG_WRAPPER.format(bg=COLOR_BASE, border=COLOR_SURFACE0, height=height, svg=animated)

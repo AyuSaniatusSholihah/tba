@@ -7,20 +7,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import time
 from engine import DFA
-from utils import build_dfa_graph, render_dfa_animated
-
-
-def parse_transitions_dfa(text):
-    transitions = {}
-    for line in text.strip().splitlines():
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-        parts = [p.strip() for p in line.split(',')]
-        if len(parts) != 3:
-            raise ValueError(f"Format salah: '{line}'. Gunakan: state,simbol,state_tujuan")
-        transitions[(parts[0], parts[1])] = parts[2]
-    return transitions
+from utils import build_dfa_graph, render_dfa_animated, parse_transitions_dfa
 
 
 def render():

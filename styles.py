@@ -292,6 +292,4 @@ li[role="option"][aria-selected="true"],
     padding: 8px;
 }}
 </style>
-
-</style>
 """

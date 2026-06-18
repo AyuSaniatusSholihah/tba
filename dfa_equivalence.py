@@ -5,20 +5,7 @@ Fitur 4: Cek Ekuivalensi Dua DFA
 
 import streamlit as st
 from engine import DFA, dfa_equivalent
-from utils import build_dfa_graph
-
-
-def parse_transitions_dfa(text):
-    transitions = {}
-    for line in text.strip().splitlines():
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-        parts = [p.strip() for p in line.split(',')]
-        if len(parts) != 3:
-            raise ValueError(f"Format salah: '{line}'. Gunakan: state,simbol,state_tujuan")
-        transitions[(parts[0], parts[1])] = parts[2]
-    return transitions
+from utils import build_dfa_graph, parse_transitions_dfa
 
 
 def input_dfa_form(prefix, label, default_states, default_alpha, default_start,
@@ -121,9 +108,9 @@ def render():
                     r1, trace1 = dfa1.run(dist_str)
                     r2, trace2 = dfa2.run(dist_str)
                 else:
-                    r1 = dist_str in dfa1.accepts if not dist_str else False
-                    r2 = dist_str in dfa2.accepts if not dist_str else False
-                    trace1, trace2 = [], []
+                    r1 = dfa1.start in dfa1.accepts
+                    r2 = dfa2.start in dfa2.accepts
+                    trace1, trace2 = [dfa1.start], [dfa2.start]
 
                 col_r1, col_r2 = st.columns(2)
                 with col_r1:
