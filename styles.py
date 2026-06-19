@@ -152,8 +152,9 @@ p, li, label {{ color: {COLOR_TEXT} !important; }}
     box-shadow: 0 0 0 2px rgba(6,182,212,0.2) !important;
 }}
 
-/* ── Buttons ── */
-.stButton > button {{
+/* ── Buttons (termasuk tombol submit di dalam st.form) ── */
+.stButton > button,
+.stFormSubmitButton > button {{
     background: linear-gradient(135deg, {COLOR_BLUE}, {COLOR_LAVENDER}) !important;
     border: 2px solid transparent !important;
     border-radius: 10px;
@@ -162,18 +163,21 @@ p, li, label {{ color: {COLOR_TEXT} !important; }}
     padding: 10px 20px;
     transition: all 0.2s ease;
 }}
-.stButton > button:hover {{
+.stButton > button:hover,
+.stFormSubmitButton > button:hover {{
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(6,182,212,0.4);
     background: linear-gradient(135deg, {COLOR_LAVENDER}, {COLOR_MAUVE}) !important;
 }}
-.stButton > button:active {{
+.stButton > button:active,
+.stFormSubmitButton > button:active {{
     transform: translateY(0px);
     background: linear-gradient(135deg, {COLOR_PEACH}, {COLOR_YELLOW}) !important;
     border-color: transparent !important;
     box-shadow: inset 0 3px 5px rgba(0,0,0,0.2) !important;
 }}
-.stButton > button:focus {{
+.stButton > button:focus,
+.stFormSubmitButton > button:focus {{
     background: linear-gradient(135deg, {COLOR_PEACH}, {COLOR_YELLOW}) !important;
     border-color: transparent !important;
     box-shadow: 0 0 0 2px rgba(249,115,22,0.4) !important;
@@ -182,6 +186,8 @@ p, li, label {{ color: {COLOR_TEXT} !important; }}
 /* Forcing all button text (including inside paragraphs/spans) to be dark in all states */
 .stButton > button,
 .stButton > button *,
+.stFormSubmitButton > button,
+.stFormSubmitButton > button *,
 button[data-testid^="stBaseButton"],
 button[data-testid^="stBaseButton"] * {{
     color: {COLOR_BASE} !important;
