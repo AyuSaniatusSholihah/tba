@@ -13,9 +13,11 @@ from utils import build_nfa_graph, render_nfa_animated
 def render():
     st.header("2. Regex → NFA & Uji String")
 
-    regex_input = st.text_input("Regular Expression (contoh: (a|b)*abb):", "a*b", key="regex_input")
+    with st.form("regex_form"):
+        regex_input = st.text_input("Regular Expression (contoh: (a|b)*abb):", "a*b", key="regex_input")
+        submitted = st.form_submit_button("Generate NFA")
 
-    if st.button("Generate NFA", key="regex_generate"):
+    if submitted:
         try:
             nfa = regex_to_nfa(regex_input)
             st.session_state['nfa_regex'] = nfa
@@ -25,6 +27,9 @@ def render():
                 f"({len(nfa.states)} state, alfabet: `{sorted(nfa.alphabet)}`)"
             )
         except ValueError as e:
+            # Regex tidak valid -> jangan tampilkan hasil lama yang mungkin masih tersimpan
+            st.session_state.pop('nfa_regex', None)
+            st.session_state.pop('regex_str', None)
             st.error(f"Regex tidak valid: {e}")
 
     if 'nfa_regex' in st.session_state:

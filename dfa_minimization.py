@@ -12,29 +12,30 @@ def render():
     st.header("3. Minimisasi DFA")
 
     with st.expander("Definisi DFA", expanded=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            states_input = st.text_input("States (pisah koma):", "q0, q1, q2, q3, q4", key="min_states")
-            alphabet_input = st.text_input("Alfabet (pisah koma):", "a, b", key="min_alpha")
-        with col2:
-            start_input = st.text_input("Start State:", "q0", key="min_start")
-            accepts_input = st.text_input("Accepting States (pisah koma):", "q3, q4", key="min_accepts")
+        with st.form("min_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                states_input = st.text_input("States (pisah koma):", "q0, q1, q2, q3, q4", key="min_states")
+                alphabet_input = st.text_input("Alfabet (pisah koma):", "a, b", key="min_alpha")
+            with col2:
+                start_input = st.text_input("Start State:", "q0", key="min_start")
+                accepts_input = st.text_input("Accepting States (pisah koma):", "q3, q4", key="min_accepts")
 
-        trans_default = (
-            "q0, a, q1\n"
-            "q0, b, q2\n"
-            "q1, a, q1\n"
-            "q1, b, q3\n"
-            "q2, a, q2\n"
-            "q2, b, q4\n"
-            "q3, a, q3\n"
-            "q3, b, q3\n"
-            "q4, a, q4\n"
-            "q4, b, q4"
-        )
-        trans_input = st.text_area("Transisi DFA:", value=trans_default, height=200, key="min_trans")
+            trans_default = (
+                "q0, a, q1\n"
+                "q0, b, q2\n"
+                "q1, a, q1\n"
+                "q1, b, q3\n"
+                "q2, a, q2\n"
+                "q2, b, q4\n"
+                "q3, a, q3\n"
+                "q3, b, q3\n"
+                "q4, a, q4\n"
+                "q4, b, q4"
+            )
+            trans_input = st.text_area("Transisi DFA:", value=trans_default, height=200, key="min_trans")
 
-        run_btn = st.button("Minimalkan DFA", key="min_run")
+            run_btn = st.form_submit_button("Minimalkan DFA")
 
     if run_btn:
         try:
@@ -47,7 +48,16 @@ def render():
             minimized = minimize_dfa(original)
             st.session_state['min_original'] = original
             st.session_state['min_minimized'] = minimized
+            if original.incomplete_transitions:
+                pairs = ", ".join(f"({s}, {a})" for s, a in original.incomplete_transitions)
+                st.warning(
+                    f"DFA tidak total — transisi belum didefinisikan untuk: {pairs}. "
+                    f"Pasangan ini akan diperlakukan sebagai penolakan (menuju trap state implisit)."
+                )
         except Exception as e:
+            # Input tidak valid -> jangan tampilkan hasil lama yang mungkin masih tersimpan
+            st.session_state.pop('min_original', None)
+            st.session_state.pop('min_minimized', None)
             st.error(f"Error: {e}")
 
     if 'min_original' in st.session_state:

@@ -25,31 +25,32 @@ def input_dfa_form(prefix, label, default_states, default_alpha, default_start,
 def render():
     st.header("4. Cek Ekuivalensi Dua DFA")
 
-    # DFA 1
-    with st.expander("Definisi DFA 1", expanded=True):
-        s1, a1, i1, f1, t1 = input_dfa_form(
-            prefix="eq1",
-            label="DFA 1",
-            default_states="q0, q1",
-            default_alpha="a, b",
-            default_start="q0",
-            default_accepts="q1",
-            default_trans="q0, a, q1\nq0, b, q0\nq1, a, q1\nq1, b, q0"
-        )
+    with st.form("eq_form"):
+        # DFA 1
+        with st.expander("Definisi DFA 1", expanded=True):
+            s1, a1, i1, f1, t1 = input_dfa_form(
+                prefix="eq1",
+                label="DFA 1",
+                default_states="q0, q1",
+                default_alpha="a, b",
+                default_start="q0",
+                default_accepts="q1",
+                default_trans="q0, a, q1\nq0, b, q0\nq1, a, q1\nq1, b, q0"
+            )
 
-    # DFA 2
-    with st.expander("Definisi DFA 2", expanded=True):
-        s2, a2, i2, f2, t2 = input_dfa_form(
-            prefix="eq2",
-            label="DFA 2",
-            default_states="p0, p1, p2",
-            default_alpha="a, b",
-            default_start="p0",
-            default_accepts="p1, p2",
-            default_trans="p0, a, p1\np0, b, p0\np1, a, p2\np1, b, p0\np2, a, p2\np2, b, p0"
-        )
+        # DFA 2
+        with st.expander("Definisi DFA 2", expanded=True):
+            s2, a2, i2, f2, t2 = input_dfa_form(
+                prefix="eq2",
+                label="DFA 2",
+                default_states="p0, p1, p2",
+                default_alpha="a, b",
+                default_start="p0",
+                default_accepts="p1, p2",
+                default_trans="p0, a, p1\np0, b, p0\np1, a, p2\np1, b, p0\np2, a, p2\np2, b, p0"
+            )
 
-    run_btn = st.button("Cek Ekuivalensi", key="eq_run", use_container_width=True)
+        run_btn = st.form_submit_button("Cek Ekuivalensi", use_container_width=True)
 
     if run_btn:
         try:
@@ -70,10 +71,22 @@ def render():
             st.session_state['eq_dfa1'] = dfa1
             st.session_state['eq_dfa2'] = dfa2
 
+            for label, dfa in (("DFA 1", dfa1), ("DFA 2", dfa2)):
+                if dfa.incomplete_transitions:
+                    pairs = ", ".join(f"({s}, {a})" for s, a in dfa.incomplete_transitions)
+                    st.warning(
+                        f"{label} tidak total — transisi belum didefinisikan untuk: {pairs}. "
+                        f"Pasangan ini akan diperlakukan sebagai penolakan (menuju trap state implisit)."
+                    )
+
             is_eq, dist_str = dfa_equivalent(dfa1, dfa2)
             st.session_state['eq_result'] = (is_eq, dist_str)
 
         except Exception as e:
+            # Input tidak valid -> jangan tampilkan hasil lama yang mungkin masih tersimpan
+            st.session_state.pop('eq_dfa1', None)
+            st.session_state.pop('eq_dfa2', None)
+            st.session_state.pop('eq_result', None)
             st.error(f"Error: {e}")
 
     if 'eq_result' in st.session_state:
