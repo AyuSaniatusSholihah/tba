@@ -14,19 +14,22 @@ def render():
     st.header("1. Uji String pada DFA")
 
     with st.expander("Definisi DFA", expanded=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            states_input = st.text_input("States (pisah koma):", "q0, q1, q2", key="dfa1_states")
-            alphabet_input = st.text_input("Alfabet (pisah koma):", "0, 1", key="dfa1_alpha")
-        with col2:
-            start_input = st.text_input("Start State:", "q0", key="dfa1_start")
-            accepts_input = st.text_input("Accepting States (pisah koma):", "q2", key="dfa1_accepts")
+        with st.form("dfa1_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                states_input = st.text_input("States (pisah koma):", "q0, q1, q2", key="dfa1_states")
+                alphabet_input = st.text_input("Alfabet (pisah koma):", "0, 1", key="dfa1_alpha")
+            with col2:
+                start_input = st.text_input("Start State:", "q0", key="dfa1_start")
+                accepts_input = st.text_input("Accepting States (pisah koma):", "q2", key="dfa1_accepts")
 
-        st.markdown("**Transisi** (Format: `state_asal, simbol, state_tujuan`)")
-        trans_default = "q0, 0, q0\nq0, 1, q1\nq1, 0, q2\nq1, 1, q0\nq2, 0, q1\nq2, 1, q2"
-        trans_input = st.text_area("Transisi DFA:", value=trans_default, height=160, key="dfa1_trans")
+            st.markdown("**Transisi** (Format: `state_asal, simbol, state_tujuan`)")
+            trans_default = "q0, 0, q0\nq0, 1, q1\nq1, 0, q2\nq1, 1, q0\nq2, 0, q1\nq2, 1, q2"
+            trans_input = st.text_area("Transisi DFA:", value=trans_default, height=160, key="dfa1_trans")
 
-        if st.button("Buat & Tampilkan DFA", key="dfa1_build"):
+            submitted = st.form_submit_button("Buat & Tampilkan DFA")
+
+        if submitted:
             try:
                 states = {s.strip() for s in states_input.split(",") if s.strip()}
                 alphabet = {a.strip() for a in alphabet_input.split(",") if a.strip()}
@@ -35,7 +38,15 @@ def render():
                 dfa = DFA(states, alphabet, transitions, start_input.strip(), accepts)
                 st.session_state['dfa_1'] = dfa
                 st.success("DFA berhasil dibuat!")
+                if dfa.incomplete_transitions:
+                    pairs = ", ".join(f"({s}, {a})" for s, a in dfa.incomplete_transitions)
+                    st.warning(
+                        f"DFA tidak total — transisi belum didefinisikan untuk: {pairs}. "
+                        f"Pasangan ini akan diperlakukan sebagai penolakan (menuju trap state implisit)."
+                    )
             except Exception as e:
+                # Input tidak valid -> jangan tampilkan hasil lama yang mungkin masih tersimpan
+                st.session_state.pop('dfa_1', None)
                 st.error(f"Error: {e}")
 
     if 'dfa_1' in st.session_state:
