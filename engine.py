@@ -426,7 +426,7 @@ def minimize_dfa(dfa: DFA):
         new_partitions = []
         for group in partitions:
             splitter = {}
-            for s in group:
+            for s in sorted(group):
                 signature = tuple(
                     find_group(dfa.transitions.get((s, a)), partitions)
                     for a in alphabet

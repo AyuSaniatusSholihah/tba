@@ -2,15 +2,12 @@
 styles.py
 =========
 Semua konstanta desain: warna, CSS tema, CSS animasi, dan komponen
-HTML kecil yang dipakai berulang (chip trace, meta-row, banner hasil).
-Pisahkan desain dari logika program agar mudah diubah.
+HTML kecil yang dipakai berulang 
 
-Konsep: dark, warm, "coffee/terracotta" — premium dev tool look
-(ala Linear/Raycast/Warp), bukan tema bawaan Streamlit.
 """
 
 # =====================================================================
-# Konstanta Warna — Coffee / Terracotta dark theme
+# Konstanta Warna 
 # =====================================================================
 COLOR_BASE        = "#1A1210"   # background utama — hampir hitam kecoklatan
 COLOR_MANTLE      = "#221814"   # sidebar / topbar
@@ -319,20 +316,6 @@ code, pre, .stTextInput input, .stTextArea textarea {{
     font-size: 11px;
     color: {COLOR_SUBTEXT};
     margin-left: 4px;
-}}
-.app-topbar .topbar-link {{
-    font-family: {FONT_MONO};
-    font-size: 12px;
-    color: {COLOR_SUBTEXT};
-    text-decoration: none;
-    border: 1px solid {COLOR_SURFACE1};
-    padding: 5px 12px;
-    border-radius: 6px;
-    transition: all 0.15s ease;
-}}
-.app-topbar .topbar-link:hover {{
-    color: {COLOR_PINK};
-    border-color: {COLOR_PINK};
 }}
 
 /* ── Sidebar (220px fixed) ── */

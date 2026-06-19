@@ -44,9 +44,6 @@ st.markdown(
             <span class="brand-name">Simulator Automata</span>
             <span class="brand-sub">Teori Bahasa &amp; Automata</span>
         </div>
-        <a class="topbar-link" href="https://graphviz.org/documentation/" target="_blank">
-            Dokumentasi ↗
-        </a>
     </div>
     """,
     unsafe_allow_html=True,
