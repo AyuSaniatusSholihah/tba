@@ -17,6 +17,11 @@ def parse_transitions_dfa(text):
     Parse teks input transisi DFA menjadi dictionary Python.
     Format tiap baris: state_asal, simbol, state_tujuan
     Baris kosong dan baris diawali '#' diabaikan.
+
+    Jika ditemukan dua baris dengan (state_asal, simbol) yang sama tapi
+    state_tujuan berbeda, dianggap konflik/typo dan akan menghasilkan
+    ValueError (DFA mensyaratkan transisi deterministik: satu pasangan
+    (state, simbol) hanya boleh menuju satu state tujuan).
     """
     transitions = {}
     for line in text.strip().splitlines():
@@ -28,7 +33,17 @@ def parse_transitions_dfa(text):
             raise ValueError(
                 f"Format salah: '{line}'. Gunakan: state_asal, simbol, state_tujuan"
             )
-        transitions[(parts[0], parts[1])] = parts[2]
+        frm, sym, to = parts
+        key = (frm, sym)
+        if key in transitions and transitions[key] != to:
+            raise ValueError(
+                f"Transisi konflik untuk ({frm}, {sym}): "
+                f"sudah didefinisikan menuju '{transitions[key]}', "
+                f"tapi baris lain mendefinisikan menuju '{to}'. "
+                f"DFA harus deterministik — satu pasangan (state, simbol) "
+                f"hanya boleh punya satu tujuan."
+            )
+        transitions[key] = to
     return transitions
 
 

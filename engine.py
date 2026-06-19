@@ -15,6 +15,74 @@ EPSILON = "ε"
 # ============================= DFA ===================================
 # =====================================================================
 
+def validate_dfa(states, alphabet, transitions, start, accepts):
+    """
+    Validasi konsistensi definisi DFA.
+    Mengembalikan list pasangan (state, simbol) yang transisinya belum
+    didefinisikan (DFA tidak total -> dianggap implisit menuju trap/reject).
+    Melempar ValueError jika ditemukan inkonsistensi fatal:
+      - states/alfabet kosong
+      - start state tidak terdaftar di states
+      - ada accepting state yang tidak terdaftar di states
+      - ada state asal/tujuan pada transisi yang tidak terdaftar di states
+      - ada simbol pada transisi yang tidak terdaftar di alfabet
+    """
+    errors = []
+
+    if not states:
+        errors.append("Himpunan states tidak boleh kosong.")
+    if not alphabet:
+        errors.append("Alfabet tidak boleh kosong.")
+
+    if not start:
+        errors.append("Start state tidak boleh kosong.")
+    elif start not in states:
+        errors.append(
+            f"Start state '{start}' tidak terdaftar pada himpunan states {sorted(states)}."
+        )
+
+    invalid_accepts = set(accepts) - set(states)
+    if invalid_accepts:
+        errors.append(
+            f"Accepting state {sorted(invalid_accepts)} tidak terdaftar pada himpunan "
+            f"states {sorted(states)}. Periksa kembali ejaan nama state."
+        )
+
+    invalid_from, invalid_to, invalid_symbols = set(), set(), set()
+    for (frm, sym), to in transitions.items():
+        if frm not in states:
+            invalid_from.add(frm)
+        if to not in states:
+            invalid_to.add(to)
+        if sym not in alphabet:
+            invalid_symbols.add(sym)
+
+    if invalid_from:
+        errors.append(
+            f"State asal pada transisi tidak terdaftar di states: {sorted(invalid_from)}."
+        )
+    if invalid_to:
+        errors.append(
+            f"State tujuan pada transisi tidak terdaftar di states: {sorted(invalid_to)}."
+        )
+    if invalid_symbols:
+        errors.append(
+            f"Simbol pada transisi tidak terdaftar di alfabet: {sorted(invalid_symbols)}."
+        )
+
+    if errors:
+        raise ValueError(" | ".join(errors))
+
+    # Pengecekan lunak (tidak fatal): kelengkapan fungsi transisi.
+    # DFA yang tidak total tetap diizinkan (pasangan yang hilang dianggap
+    # menuju trap state implisit / reject), tapi dilaporkan agar user sadar.
+    missing = [
+        (s, a) for s in sorted(states) for a in sorted(alphabet)
+        if (s, a) not in transitions
+    ]
+    return missing
+
+
 class DFA:
     def __init__(self, states, alphabet, transitions, start, accepts):
         """
@@ -29,6 +97,9 @@ class DFA:
         self.transitions = dict(transitions)
         self.start = start
         self.accepts = set(accepts)
+        self.incomplete_transitions = validate_dfa(
+            self.states, self.alphabet, self.transitions, self.start, self.accepts
+        )
 
     def run(self, string):
         """
