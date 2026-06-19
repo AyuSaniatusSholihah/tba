@@ -106,7 +106,7 @@ stateDiagram-v2
     | 3 | `0` | `q2` | (selesai) |
 
 ### 1.5 Implementasi Kode
-Logika pemrosesan DFA diimplementasikan pada kelas `DFA` dalam file **[engine.py](file:///d:/Nia/Kuliah/SEM4/TBA/engine.py#L18-L49)**:
+Logika pemrosesan DFA diimplementasikan pada fungsi `validate_dfa` dan kelas `DFA` dalam file **[engine.py](file:///d:/Nia/Kuliah/SEM4/TBA/engine.py#L18-L119)**:
 
 ```python
 class DFA:
@@ -116,6 +116,9 @@ class DFA:
         self.transitions = dict(transitions)
         self.start = start
         self.accepts = set(accepts)
+        self.incomplete_transitions = validate_dfa(
+            self.states, self.alphabet, self.transitions, self.start, self.accepts
+        )
 
     def run(self, string):
         current = self.start
@@ -133,9 +136,10 @@ class DFA:
 **Penjelasan Kode:**
 1.  **Konstruktor (`__init__`)**: Menyimpan komponen DFA berupa himpunan state (`states`), alfabet (`alphabet`), fungsi transisi (`transitions` dalam bentuk dictionary Python dengan kunci `(state, simbol)`), start state, dan himpunan accepting states.
 2.  **Pencocokan String (`run`)**: Dimulai dari `self.start` sebagai state aktif. Untuk setiap karakter dalam string, dicocokkan dengan dictionary `self.transitions`. Jika transisi valid, state aktif diperbarui dan ditambahkan ke dalam `trace` untuk kebutuhan visualisasi lintasan pada frontend. Jika di akhir pembacaan string, state aktif berada di `accepts`, maka fungsi mengembalikan nilai `True`.
+3.  **Validasi & DFA Parsial (`validate_dfa`)**: Dipanggil otomatis di dalam konstruktor. Melempar `ValueError` jika ditemukan inkonsistensi fatal (state/alfabet kosong, start/accepting state tidak terdaftar, transisi merujuk state atau simbol yang tidak dikenal). Selain itu, fungsi ini juga melakukan pengecekan lunak (*non-fatal*): pasangan `(state, simbol)` yang transisinya belum didefinisikan dikumpulkan ke `self.incomplete_transitions` dan ditampilkan sebagai peringatan "DFA tidak total" di UI — pasangan tersebut diperlakukan sebagai penolakan implisit (menuju *trap state*) saat `run()` maupun `dfa_equivalent()` dijalankan.
 
 ### 1.6 Implementasi Antarmuka (Streamlit UI)
-Seluruh logika UI dan animasi langkah-demi-langkah (step-by-step) untuk pengujian DFA terletak di berkas **[dfa_testing.py](file:///d:/Nia/Kuliah/SEM4/TBA/dfa_testing.py#L26-L136)**:
+Seluruh logika UI dan animasi langkah-demi-langkah (step-by-step) untuk pengujian DFA terletak di berkas **[dfa_testing.py](file:///d:/Nia/Kuliah/SEM4/TBA/dfa_testing.py#L14-L151)**:
 - **`parse_transitions_dfa(text)`**: Menguraikan baris teks input transisi pengguna (misal: `q0, 0, q0`) menjadi dictionary Python.
 - **`render()`**: Menggambar tata letak formulir untuk menerima states, alfabet, start state, accepting states, dan transisi DFA.
 - **Animasi Sinkron (`time.sleep`)**: Ketika tombol "Jalankan" diklik, aplikasi melakukan iterasi sepanjang array `trace`. Di setiap langkah, ia memperbarui penyorotan state (`highlight_state`) dan edge (`highlight_edge`) dengan memanggil helper `render_dfa_animated()`. Kontainer kosong (`st.empty()`) diganti secara dinamis untuk memberikan efek pergerakan mulus pada browser.
@@ -226,7 +230,7 @@ stateDiagram-v2
     Karena $\hat{\delta}(s_4, \text{"aab"}) \cap F = \{s_5\} \cap \{s_5\} = \{s_5\} \neq \emptyset$, string **DITERIMA**.
 
 ### 2.5 Implementasi Kode
-Parser regex dan konstruksi NFA Thompson diimplementasikan melalui kelas `RegexParser` dan `NFA` di file **[engine.py](file:///d:/Nia/Kuliah/SEM4/TBA/engine.py#L55-L255)**:
+Parser regex dan konstruksi NFA Thompson diimplementasikan melalui kelas `RegexParser` dan `NFA` di file **[engine.py](file:///d:/Nia/Kuliah/SEM4/TBA/engine.py#L126-L320)**:
 
 #### A. Konstruksi Thompson (`RegexParser` & `to_nfa`)
 ```python
@@ -262,6 +266,20 @@ def build(node):
         add_trans(s, EPSILON, t)
         add_trans(t1, EPSILON, s1)
         return s, t
+    elif kind == 'plus':
+        s1, t1 = build(node[1])
+        s, t = self.new_state(), self.new_state()
+        add_trans(s, EPSILON, s1)
+        add_trans(t1, EPSILON, t)
+        add_trans(t1, EPSILON, s1)
+        return s, t
+    elif kind == 'optional':
+        s1, t1 = build(node[1])
+        s, t = self.new_state(), self.new_state()
+        add_trans(s, EPSILON, s1)
+        add_trans(t1, EPSILON, t)
+        add_trans(s, EPSILON, t)
+        return s, t
 ```
 
 **Penjelasan Konstruksi (Thompson's Rules):**
@@ -274,8 +292,12 @@ Fungsi `build(node)` membaca AST hasil parsing regex secara rekursif dan membang
     $$\delta(t_1, \varepsilon) = \{s_2\}$$
 4.  **Union (`union`)**: Membuat start state baru $s$ dan end state baru $t$. State $s$ dihubungkan ke $s_1$ dan $s_2$ dengan $\varepsilon$, dan state akhir $t_1$ serta $t_2$ dihubungkan ke $t$ dengan $\varepsilon$:
     $$\delta(s, \varepsilon) = \{s_1, s_2\}, \quad \delta(t_1, \varepsilon) = \{t\}, \quad \delta(t_2, \varepsilon) = \{t\}$$
-5.  **Kleene Star (`star`)**: Membuat start state baru $s$ dan end state baru $t$. Menambahkan loop kembali dari $t_1 \rightarrow s_1$ dan jalur bypass langsung dari $s \rightarrow t$:
+5.  **Kleene Star (`star`)**: Membuat start state baru $s$ dan end state baru $t$. Menambahkan loop kembali dari $t_1 \rightarrow s_1$ dan jalur bypass langsung dari $s \rightarrow t$ (boleh muncul nol kali):
     $$\delta(s, \varepsilon) = \{s_1, t\}, \quad \delta(t_1, \varepsilon) = \{s_1, t\}$$
+6.  **Plus (`plus`, operator `+`)**: Sama seperti Kleene Star, tapi *tanpa* jalur bypass langsung dari $s \rightarrow t$ — sub-ekspresi wajib muncul minimal satu kali sebelum boleh diulang:
+    $$\delta(s, \varepsilon) = \{s_1\}, \quad \delta(t_1, \varepsilon) = \{s_1, t\}$$
+7.  **Optional (`optional`, operator `?`)**: Sama seperti Kleene Star, tapi *tanpa* loop balik $t_1 \rightarrow s_1$ — sub-ekspresi boleh muncul nol kali atau tepat satu kali, tidak bisa diulang:
+    $$\delta(s, \varepsilon) = \{s_1, t\}, \quad \delta(t_1, \varepsilon) = \{t\}$$
 
 #### B. Simulasi NFA (`NFA`)
 ```python
@@ -313,7 +335,7 @@ class NFA:
 2.  **`run`**: Menelusuri string dengan melacak kumpulan state aktif secara paralel. Setiap membaca simbol baru, program mencari semua state tujuan dari seluruh state aktif saat ini, kemudian menghitung penutupan epsilon (`epsilon_closure`) dari himpunan state baru tersebut. Hasil pengujian bernilai benar jika $\hat{\delta}(q_0, w) \cap F \neq \emptyset$.
 
 ### 2.6 Implementasi Antarmuka (Streamlit UI)
-Logika antarmuka pengolahan ekspresi reguler dan visualisasi NFA Thompson didefinisikan pada berkas **[regex_nfa.py](file:///d:/Nia/Kuliah/SEM4/TBA/regex_nfa.py#L13-L124)**:
+Logika antarmuka pengolahan ekspresi reguler dan visualisasi NFA Thompson didefinisikan pada berkas **[regex_nfa.py](file:///d:/Nia/Kuliah/SEM4/TBA/regex_nfa.py#L14-L180)**:
 - **`render()`**: Menerima input pola regex dari pengguna dan memanggil fungsi `regex_to_nfa` dari `engine.py`.
 - **Ekspansi Detail**: Menampilkan tabel transisi lengkap dari NFA yang digenerate dengan penulisan representasi transisi epsilon $\varepsilon$ yang rapi.
 - **Visualisasi Parallel-Tracking**: Karena NFA dapat berada di beberapa state sekaligus, antarmuka melacak himpunan state aktif (`active_states`) pada setiap iterasi pembacaan string dan meng-highlight semua state aktif tersebut di dalam graf SVG dengan `render_nfa_animated()`.
@@ -452,9 +474,21 @@ graph LR
         ```
 
 ### 3.6 Implementasi Kode
-Algoritma minimisasi diimplementasikan dalam fungsi `minimize_dfa` pada file **[engine.py](file:///d:/Nia/Kuliah/SEM4/TBA/engine.py#L261-L327)**:
+Algoritma minimisasi diimplementasikan dalam fungsi `minimize_dfa` (dibungkus kelas hasil `MinimizationResult`) pada file **[engine.py](file:///d:/Nia/Kuliah/SEM4/TBA/engine.py#L347-L470)**:
 
 ```python
+class MinimizationResult(DFA):
+    """Subclass DFA — semua atribut/method DFA biasa tetap tersedia,
+    ditambah field informasional: unreachable_states, partition_steps,
+    state_mapping."""
+    def __init__(self, states, alphabet, transitions, start, accepts,
+                unreachable_states, partition_steps, state_mapping):
+        super().__init__(states, alphabet, transitions, start, accepts)
+        self.unreachable_states = unreachable_states
+        self.partition_steps = partition_steps
+        self.state_mapping = state_mapping
+
+
 def minimize_dfa(dfa: DFA):
     states = sorted(dfa.states)
     alphabet = sorted(dfa.alphabet)
@@ -469,6 +503,7 @@ def minimize_dfa(dfa: DFA):
             if t is not None and t not in reachable:
                 reachable.add(t)
                 frontier.append(t)
+    unreachable_states = sorted(s for s in states if s not in reachable)
     states = [s for s in states if s in reachable]
 
     # 2. Partisi awal: accepting vs non-accepting
@@ -482,14 +517,20 @@ def minimize_dfa(dfa: DFA):
                 return g
         return None
 
+    def snapshot(label, groups):
+        return {"label": label, "groups": [sorted(g) for g in groups]}
+
+    partition_steps = [snapshot("P0", partitions)]
+
     # 3. Refinement loop
     changed = True
+    iteration = 1
     while changed:
         changed = False
         new_partitions = []
         for group in partitions:
             splitter = {}
-            for s in group:
+            for s in sorted(group):          # urutan deterministik
                 signature = tuple(
                     find_group(dfa.transitions.get((s, a)), partitions)
                     for a in alphabet
@@ -503,23 +544,35 @@ def minimize_dfa(dfa: DFA):
                 for sub in splitter.values():
                     new_partitions.append(frozenset(sub))
         partitions = new_partitions
+        if changed:
+            partition_steps.append(snapshot(f"P{iteration}", partitions))
+            iteration += 1
 
     # 4. Bangun DFA baru berdasarkan kelompok partisi
     group_name = {g: f"q{i}" for i, g in enumerate(partitions)}
+    state_mapping = {name: sorted(g) for g, name in group_name.items()}
     # ... penyusunan transisi baru ...
-    return DFA(set(group_name.values()), dfa.alphabet, new_transitions, new_start, new_accepts)
+    return MinimizationResult(
+        set(group_name.values()), dfa.alphabet, new_transitions, new_start, new_accepts,
+        unreachable_states=unreachable_states,
+        partition_steps=partition_steps,
+        state_mapping=state_mapping,
+    )
 ```
 **Penjelasan Kode:**
-1.  **Langkah 1**: Menghilangkan state yang tidak dapat dicapai dari start state menggunakan algoritma BFS sederhana.
+1.  **Langkah 1**: Menghilangkan state yang tidak dapat dicapai dari start state menggunakan algoritma BFS sederhana. State yang dibuang dicatat ke `unreachable_states` agar bisa ditampilkan sebagai peringatan di UI.
 2.  **Langkah 2**: Membagi state-state reachable menjadi dua partisi utama: accepting vs non-accepting.
-3.  **Langkah 3**: Loop pembagian (refinement) menggunakan tanda tangan transisi (`signature`). Tanda tangan ini merepresentasikan ke kelompok mana suatu state berpindah untuk setiap simbol input. Jika state-state dalam satu kelompok memiliki tanda tangan yang berbeda, kelompok tersebut dipecah.
+3.  **Langkah 3**: Loop pembagian (refinement) menggunakan tanda tangan transisi (`signature`). Tanda tangan ini merepresentasikan ke kelompok mana suatu state berpindah untuk setiap simbol input. Jika state-state dalam satu kelompok memiliki tanda tangan yang berbeda, kelompok tersebut dipecah. Tiap kelompok diiterasi dalam urutan terurut (`sorted(group)`) supaya penamaan state baru (`q0, q1, ...`) konsisten di setiap kali dijalankan — sebelumnya urutan ini bergantung pada urutan iterasi `frozenset` Python yang tidak deterministik antar proses.
 4.  **Langkah 4**: Mengonversi setiap kelompok partisi akhir yang stabil menjadi state minimal baru dan menyusun ulang tabel transisi.
+5.  **Hasil sebagai `MinimizationResult`**: Selain DFA minimal itu sendiri (tetap bisa dipakai persis seperti objek `DFA` biasa), fungsi ini juga mengembalikan tiga informasi tambahan murni untuk keperluan visualisasi di UI: `unreachable_states` (state yang dibuang di Langkah 1), `partition_steps` (snapshot kelompok partisi $P_0, P_1, \dots$ di setiap iterasi refinement), dan `state_mapping` (pemetaan nama state baru ke anggota state lama). Ketiganya ditampilkan masing-masing pada expander "Langkah Partisi" dan "Pemetaan State" di `dfa_minimization.py`.
 
 ### 3.7 Implementasi Antarmuka (Streamlit UI)
-Tata letak untuk menampilkan proses minimisasi DFA diatur dalam berkas **[dfa_minimization.py](file:///d:/Nia/Kuliah/SEM4/TBA/dfa_minimization.py#L24-L115)**:
+Tata letak untuk menampilkan proses minimisasi DFA diatur dalam berkas **[dfa_minimization.py](file:///d:/Nia/Kuliah/SEM4/TBA/dfa_minimization.py#L12-L175)**:
 - **Penyajian Metrik (`st.metric`)**: Menyediakan panel ringkasan informasi berupa jumlah state awal, jumlah state minimal setelah pemrosesan, dan persentase/jumlah pengurangan state.
 - **Visualisasi Komparatif**: Menampilkan graf DFA Asli dan DFA Minimal secara berdampingan (side-by-side) menggunakan layout kolom (`st.columns`) dan `st.graphviz_chart()` untuk memudahkan analisis pengguna.
+- **Detail Proses**: Expander "Langkah Partisi" menampilkan tiap iterasi $P_0, P_1, \dots$ dari `partition_steps`, dan expander "Pemetaan State" menampilkan tabel `state_mapping` (status "digabung" jika satu state baru mewakili lebih dari satu state lama, "tetap" jika tidak). Jika ada state yang tidak *reachable*, ditampilkan sebagai peringatan terpisah.
 - **Uji Konsistensi**: Menyediakan simulator kecil di bagian bawah halaman untuk langsung menguji string pada hasil DFA minimal guna memastikan bahwa perilakunya tetap konsisten dengan mesin aslinya.
+
 
 ---
 
@@ -561,10 +614,10 @@ Menentukan apakah dua DFA menerima bahasa yang **persis sama** menggunakan **Pro
 ### 4.3 Hasil Luaran (Output)
 *   **Status Ekuivalensi**: `✅ EKUIVALEN (Equivalent)`
 *   **Analisis**:
-    Kedua DFA menerima bahasa yang direpresentasikan oleh regular expression `b*a(a|b)*`. Karena setiap pasangan state yang dapat dicapai dari $(q_0, p_0)$ selalu memiliki sifat penerimaan yang setara (misalnya $(q_1, p_1)$ dan $(q_1, p_2)$ keduanya bernilai *True* untuk penerimaan), maka kedua mesin tersebut terbukti ekuivalen secara fungsional.
+    Kedua DFA menerima bahasa yang direpresentasikan oleh regular expression `(a|b)*a`, yaitu seluruh string yang **berakhir dengan simbol 'a'**. Pada DFA 1, simbol 'a' selalu membawa state ke `q1` (accepting) dan simbol 'b' selalu membawa kembali ke `q0` (non-accepting), sehingga status akhir hanya ditentukan oleh simbol terakhir yang dibaca. Pola yang sama berlaku pada DFA 2: `p1` dan `p2` sama-sama accepting dan sama-sama kembali ke `p0` saat membaca 'b', sehingga keduanya berperilaku ekuivalen terhadap `q1`. Karena setiap pasangan state yang dapat dicapai dari $(q_0, p_0)$ selalu memiliki sifat penerimaan yang setara (misalnya $(q_1, p_1)$ dan $(q_1, p_2)$ keduanya bernilai *True* untuk penerimaan), maka kedua mesin tersebut terbukti ekuivalen secara fungsional.
 
 ### 4.4 Implementasi Kode
-Algoritma pemeriksaan ekuivalensi diimplementasikan dalam fungsi `dfa_equivalent` pada file **[engine.py](file:///d:/Nia/Kuliah/SEM4/TBA/engine.py#L334-L365)**:
+Algoritma pemeriksaan ekuivalensi diimplementasikan dalam fungsi `dfa_equivalent` pada file **[engine.py](file:///d:/Nia/Kuliah/SEM4/TBA/engine.py#L477-L518)**:
 
 ```python
 def dfa_equivalent(dfa1: DFA, dfa2: DFA):
@@ -581,12 +634,14 @@ def dfa_equivalent(dfa1: DFA, dfa2: DFA):
 
     queue = [(dfa1.start, dfa2.start, "")]
     visited = {(dfa1.start, dfa2.start)}
+    explored_pairs = []
 
     while queue:
         s1, s2, path = queue.pop(0)
+        explored_pairs.append((s1, s2))
         # Jika satu state bernilai accept dan pasangannya tidak, maka TIDAK EKUIVALEN
         if is_accept(dfa1, s1) != is_accept(dfa2, s2):
-            return False, (path if path != "" else "(string kosong / epsilon)")
+            return False, (path if path != "" else "(string kosong / epsilon)"), explored_pairs
         
         for sym in alphabet:
             n1 = step(dfa1, s1, sym)
@@ -596,16 +651,18 @@ def dfa_equivalent(dfa1: DFA, dfa2: DFA):
                 visited.add(pair)
                 queue.append((n1, n2, path + sym))
 
-    return True, None
+    return True, None, explored_pairs
 ```
 **Penjelasan Kode:**
 1.  **Product States & BFS**: Algoritma memeriksa pasangan state gabungan `(s1, s2)` mulai dari start state kedua DFA. Penelusuran menggunakan struktur BFS untuk menemukan string pembeda terpendek.
 2.  **State Mati (`DEAD`)**: Ditambahkan untuk menangani kasus di mana transisi tidak didefinisikan secara lengkap pada DFA masukan (DFA parsial), sehingga transisinya mengarah ke state perangkap virtual.
 3.  **Pendeteksian Perbedaan**: Jika di suatu pasangan state `(s1, s2)` yang dicapai oleh lintasan `path` memiliki status penerimaan berbeda (`is_accept` bernilai `True` pada satu DFA dan `False` pada DFA lainnya), fungsi langsung berhenti dan mengembalikan string pembeda tersebut. Jika antrean kosong tanpa menemukan perbedaan, kedua DFA terbukti ekuivalen.
+4.  **Pencatatan `explored_pairs`**: Setiap pasangan state yang diambil dari antrean dicatat ke `explored_pairs`, murni untuk keperluan visualisasi — tidak memengaruhi hasil `True`/`False` maupun isi *distinguishing string*. Daftar ini dipakai UI untuk menandai baris mana pada "Product Construction Table" yang benar-benar *reachable* dari $(q_0, p_0)$ via BFS, dibanding pasangan yang secara teoritis mungkin tapi tidak pernah tercapai.
 
 ### 4.5 Implementasi Antarmuka (Streamlit UI)
-Logika antarmuka pengujian ekuivalensi dua DFA terletak pada berkas **[dfa_equivalence.py](file:///d:/Nia/Kuliah/SEM4/TBA/dfa_equivalence.py#L38-L152)**:
+Logika antarmuka pengujian ekuivalensi dua DFA terletak pada berkas **[dfa_equivalence.py](file:///d:/Nia/Kuliah/SEM4/TBA/dfa_equivalence.py#L26-L215)**:
 - **`input_dfa_form`**: Sub-fungsi dinamis untuk menampilkan form input spesifikasi automata (states, alfabet, start state, accepting states, transisi) secara modular baik untuk DFA 1 maupun DFA 2.
+- **Product Construction Table**: Jika kedua DFA terbukti ekuivalen, expander ini menampilkan seluruh pasangan state $(q, p) \in Q_1 \times Q_2$ beserta status *reachable*-nya (berdasarkan `explored_pairs`), status accept masing-masing, dan tujuan transisi tiap simbol — sebagai bukti visual bahwa BFS sudah menjelajahi seluruh pasangan yang relevan tanpa menemukan perbedaan.
 - **Penyajian String Pembeda**: Apabila kedua DFA tidak ekuivalen, program mengeksekusi string pembeda tersebut pada kedua DFA secara paralel, meng-highlight lintasan dan state terakhirnya masing-masing, kemudian menampilkan status akhir (Accept/Reject) untuk menunjukkan secara visual di mana letak perbedaan penerimaan bahasa keduanya.
 
 ---
@@ -631,4 +688,3 @@ Mendefinisikan gaya premium aplikasi:
 - **Global Theme Override (`THEME_CSS`)**: Menyuntikkan CSS global untuk memodifikasi komponen Streamlit seperti font (Outfit untuk header, JetBrains Mono untuk input/code, Plus Jakarta Sans untuk paragraf), gradien background aplikasi, serta gaya interaktif tombol hover kustom.
 
 ---
-*Laporan ini di-generate secara otomatis untuk mendokumentasikan fungsionalitas utama Smart Automata Simulator.*

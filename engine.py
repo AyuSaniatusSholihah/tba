@@ -15,6 +15,74 @@ EPSILON = "ε"
 # ============================= DFA ===================================
 # =====================================================================
 
+def validate_dfa(states, alphabet, transitions, start, accepts):
+    """
+    Validasi konsistensi definisi DFA.
+    Mengembalikan list pasangan (state, simbol) yang transisinya belum
+    didefinisikan (DFA tidak total -> dianggap implisit menuju trap/reject).
+    Melempar ValueError jika ditemukan inkonsistensi fatal:
+      - states/alfabet kosong
+      - start state tidak terdaftar di states
+      - ada accepting state yang tidak terdaftar di states
+      - ada state asal/tujuan pada transisi yang tidak terdaftar di states
+      - ada simbol pada transisi yang tidak terdaftar di alfabet
+    """
+    errors = []
+
+    if not states:
+        errors.append("Himpunan states tidak boleh kosong.")
+    if not alphabet:
+        errors.append("Alfabet tidak boleh kosong.")
+
+    if not start:
+        errors.append("Start state tidak boleh kosong.")
+    elif start not in states:
+        errors.append(
+            f"Start state '{start}' tidak terdaftar pada himpunan states {sorted(states)}."
+        )
+
+    invalid_accepts = set(accepts) - set(states)
+    if invalid_accepts:
+        errors.append(
+            f"Accepting state {sorted(invalid_accepts)} tidak terdaftar pada himpunan "
+            f"states {sorted(states)}. Periksa kembali ejaan nama state."
+        )
+
+    invalid_from, invalid_to, invalid_symbols = set(), set(), set()
+    for (frm, sym), to in transitions.items():
+        if frm not in states:
+            invalid_from.add(frm)
+        if to not in states:
+            invalid_to.add(to)
+        if sym not in alphabet:
+            invalid_symbols.add(sym)
+
+    if invalid_from:
+        errors.append(
+            f"State asal pada transisi tidak terdaftar di states: {sorted(invalid_from)}."
+        )
+    if invalid_to:
+        errors.append(
+            f"State tujuan pada transisi tidak terdaftar di states: {sorted(invalid_to)}."
+        )
+    if invalid_symbols:
+        errors.append(
+            f"Simbol pada transisi tidak terdaftar di alfabet: {sorted(invalid_symbols)}."
+        )
+
+    if errors:
+        raise ValueError(" | ".join(errors))
+
+    # Pengecekan lunak (tidak fatal): kelengkapan fungsi transisi.
+    # DFA yang tidak total tetap diizinkan (pasangan yang hilang dianggap
+    # menuju trap state implisit / reject), tapi dilaporkan agar user sadar.
+    missing = [
+        (s, a) for s in sorted(states) for a in sorted(alphabet)
+        if (s, a) not in transitions
+    ]
+    return missing
+
+
 class DFA:
     def __init__(self, states, alphabet, transitions, start, accepts):
         """
@@ -29,6 +97,9 @@ class DFA:
         self.transitions = dict(transitions)
         self.start = start
         self.accepts = set(accepts)
+        self.incomplete_transitions = validate_dfa(
+            self.states, self.alphabet, self.transitions, self.start, self.accepts
+        )
 
     def run(self, string):
         """
@@ -249,6 +320,21 @@ class RegexParser:
 
 
 def regex_to_nfa(pattern):
+    p = pattern.replace(" ", "")
+
+    # Validasi sebelum parsing: tangkap pola yang parser terima
+    # tapi secara semantik hampir pasti typo.
+    if pyre.search(r'\|[\s]*[)|]|\|[\s]*$|^[\s]*\|', p):
+        raise ValueError(
+            "Operator '|' membutuhkan operand di kedua sisinya "
+            "(contoh: 'a|' atau '|b' atau 'a||b' tidak valid)."
+        )
+    if pyre.search(r'[*+?]{2,}', p):
+        raise ValueError(
+            "Kuantifier tidak boleh berurutan "
+            "(contoh: 'a**', 'a+*', 'a?+' tidak valid)."
+        )
+
     parser = RegexParser(pattern)
     ast = parser.parse()
     return parser.to_nfa(ast)
@@ -258,8 +344,45 @@ def regex_to_nfa(pattern):
 # =================== Minimisasi DFA ==================================
 # =====================================================================
 
+class MinimizationResult(DFA):
+    """
+    Hasil minimisasi DFA. Subclass dari DFA (bukan wrapper terpisah) supaya
+    semua kode yang sudah memakai hasil minimize_dfa() sebagai objek DFA
+    biasa (mis. minimized.states, minimized.run(), build_dfa_graph(minimized))
+    tetap berfungsi tanpa perubahan apapun — isinstance(result, DFA) == True,
+    dan seluruh atribut/method DFA tetap tersedia persis seperti sebelumnya.
+
+    Field tambahan (murni informasional, tidak memengaruhi behavior DFA):
+      unreachable_states : list state pada DFA asli yang dihapus karena
+                           tidak reachable dari start state, SEBELUM proses
+                           partition refinement dimulai.
+      partition_steps    : list of dict, satu entri per iterasi refinement.
+                           Tiap entri: {"label": "P0", "groups": [["q0","q1"], ["q2"]]}
+                           P0 = partisi awal (accepting vs non-accepting),
+                           P1, P2, ... = hasil tiap iterasi split berikutnya,
+                           sampai partisi stabil (tidak ada split lagi).
+      state_mapping       : dict {nama_state_baru: list(state_lama_anggota)},
+                           urutan key mengikuti urutan pembuatan state baru.
+    """
+    def __init__(self, states, alphabet, transitions, start, accepts,
+                unreachable_states, partition_steps, state_mapping):
+        super().__init__(states, alphabet, transitions, start, accepts)
+        self.unreachable_states = unreachable_states
+        self.partition_steps = partition_steps
+        self.state_mapping = state_mapping
+
+
 def minimize_dfa(dfa: DFA):
-    """Minimisasi DFA menggunakan algoritma Partition Refinement (Table-Filling)."""
+    """Minimisasi DFA menggunakan algoritma Partition Refinement (Table-Filling).
+
+    PENTING: algoritma inti (langkah 1-4 di bawah) TIDAK DIUBAH SAMA SEKALI
+    dari versi sebelumnya — DFA minimal yang dihasilkan persis identik.
+    Yang baru hanyalah PENCATATAN proses (state tak-reachable yang dibuang,
+    partisi tiap iterasi, pemetaan state baru->lama) untuk ditampilkan di UI.
+    Return value berubah dari DFA murni menjadi MinimizationResult (subclass
+    DFA), supaya kode lama yang memperlakukan hasilnya sebagai objek DFA
+    biasa tetap berfungsi tanpa perubahan.
+    """
     states = sorted(dfa.states)
     alphabet = sorted(dfa.alphabet)
 
@@ -273,6 +396,7 @@ def minimize_dfa(dfa: DFA):
             if t is not None and t not in reachable:
                 reachable.add(t)
                 frontier.append(t)
+    unreachable_states = sorted(s for s in states if s not in reachable)
     states = [s for s in states if s in reachable]
 
     # 2. Partisi awal: accepting vs non-accepting
@@ -286,14 +410,23 @@ def minimize_dfa(dfa: DFA):
                 return g
         return None
 
+    def snapshot(label, groups):
+        return {
+            "label": label,
+            "groups": [sorted(g) for g in groups],
+        }
+
+    partition_steps = [snapshot("P0", partitions)]
+
     # 3. Refinement loop
     changed = True
+    iteration = 1
     while changed:
         changed = False
         new_partitions = []
         for group in partitions:
             splitter = {}
-            for s in group:
+            for s in sorted(group):
                 signature = tuple(
                     find_group(dfa.transitions.get((s, a)), partitions)
                     for a in alphabet
@@ -307,6 +440,9 @@ def minimize_dfa(dfa: DFA):
                 for sub in splitter.values():
                     new_partitions.append(frozenset(sub))
         partitions = new_partitions
+        if changed:
+            partition_steps.append(snapshot(f"P{iteration}", partitions))
+            iteration += 1
 
     # 4. Bangun DFA baru
     group_name = {g: f"q{i}" for i, g in enumerate(partitions)}
@@ -324,7 +460,14 @@ def minimize_dfa(dfa: DFA):
             if t is not None:
                 new_transitions[(name, a)] = group_name[group_of(t)]
 
-    return DFA(set(group_name.values()), dfa.alphabet, new_transitions, new_start, new_accepts)
+    state_mapping = {name: sorted(g) for g, name in group_name.items()}
+
+    return MinimizationResult(
+        set(group_name.values()), dfa.alphabet, new_transitions, new_start, new_accepts,
+        unreachable_states=unreachable_states,
+        partition_steps=partition_steps,
+        state_mapping=state_mapping,
+    )
 
 
 # =====================================================================
@@ -334,7 +477,15 @@ def minimize_dfa(dfa: DFA):
 def dfa_equivalent(dfa1: DFA, dfa2: DFA):
     """
     Cek ekuivalensi dua DFA menggunakan Product Construction + BFS.
-    Return (is_equivalent: bool, distinguishing_string: str or None)
+
+    PENTING: logika inti (kapan return False, kapan return True, isi
+    distinguishing_string) TIDAK DIUBAH dari versi sebelumnya — hasilnya
+    identik. Yang baru adalah pencatatan explored_pairs untuk ditampilkan
+    di UI sebagai bukti BFS sudah mengeksplorasi seluruh pasangan state
+    yang reachable tanpa menemukan perbedaan status accept.
+
+    Return (is_equivalent: bool, distinguishing_string: str or None,
+            explored_pairs: list of (s1, s2) dalam urutan dieksplorasi BFS)
     """
     alphabet = sorted(dfa1.alphabet | dfa2.alphabet)
     DEAD = "__DEAD__"
@@ -349,11 +500,13 @@ def dfa_equivalent(dfa1: DFA, dfa2: DFA):
 
     queue = [(dfa1.start, dfa2.start, "")]
     visited = {(dfa1.start, dfa2.start)}
+    explored_pairs = []
 
     while queue:
         s1, s2, path = queue.pop(0)
+        explored_pairs.append((s1, s2))
         if is_accept(dfa1, s1) != is_accept(dfa2, s2):
-            return False, (path if path != "" else "(string kosong / epsilon)")
+            return False, (path if path != "" else "(string kosong / epsilon)"), explored_pairs
         for sym in alphabet:
             n1 = step(dfa1, s1, sym)
             n2 = step(dfa2, s2, sym)
@@ -362,4 +515,4 @@ def dfa_equivalent(dfa1: DFA, dfa2: DFA):
                 visited.add(pair)
                 queue.append((n1, n2, path + sym))
 
-    return True, None
+    return True, None, explored_pairs

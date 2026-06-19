@@ -35,32 +35,52 @@ st.set_page_config(
 # Terapkan Tema
 st.markdown(THEME_CSS, unsafe_allow_html=True)
 
-# Navigasi Sidebar
-with st.sidebar:
-    st.markdown("## Simulator Automata")
-    st.markdown(
-        "<p style='color:#6c7086;font-size:12px;'>Teori Bahasa & Automata</p>",
-        unsafe_allow_html=True,
-    )
-    st.divider()
+# Topbar custom (52px, sticky di atas semua konten)
+st.markdown(
+    """
+    <div class="app-topbar">
+        <div class="brand">
+            <div class="brand-mark">SA</div>
+            <span class="brand-name">Simulator Automata</span>
+            <span class="brand-sub">Teori Bahasa &amp; Automata</span>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
-    menu = st.selectbox(
-        "Pilih Fitur:",
-        [
-            "1. Uji String pada DFA",
-            "2. Regex → NFA & Uji String",
-            "3. Minimisasi DFA",
-            "4. Cek Ekuivalensi 2 DFA",
-        ],
-        label_visibility="collapsed",
-    )
+# Definisi menu navigasi (numbering 01-04)
+MENU_ITEMS = [
+    ("01", "Uji String DFA"),
+    ("02", "Regex → NFA"),
+    ("03", "Minimisasi DFA"),
+    ("04", "Ekuivalensi DFA"),
+]
+
+if "active_menu" not in st.session_state:
+    st.session_state["active_menu"] = 0
+
+# Navigasi Sidebar — numbered mono list menggantikan st.selectbox
+active = st.session_state["active_menu"]
+
+with st.sidebar:
+    st.markdown('<div class="sidebar-eyebrow">Modul</div>', unsafe_allow_html=True)
+
+    for idx, (num, label) in enumerate(MENU_ITEMS):
+        is_active = idx == active
+        label_text = f"{num}  {label}"
+        if st.button(label_text, key=f"nav_{idx}", use_container_width=True,
+                     type="primary" if is_active else "secondary"):
+            st.session_state["active_menu"] = idx
+            st.rerun()
 
 # Routing Fitur
-if menu == "1. Uji String pada DFA":
+active = st.session_state["active_menu"]
+if active == 0:
     dfa_testing.render()
-elif menu == "2. Regex → NFA & Uji String":
+elif active == 1:
     regex_nfa.render()
-elif menu == "3. Minimisasi DFA":
+elif active == 2:
     dfa_minimization.render()
-elif menu == "4. Cek Ekuivalensi 2 DFA":
+elif active == 3:
     dfa_equivalence.render()
